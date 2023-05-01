@@ -1,0 +1,23 @@
+extends layout
+
+block content
+
+        h1 Climber List
+        table
+            thead
+                tr
+                    th Climber Name
+                    th ZGrade
+                    th Location
+                    th Height
+                    th Number of Ascents
+                    th Most Recent Ascent
+            tbody
+                each c in climbers
+                    tr
+                        td: a(href="/Climbers/"+c.ID) #{c.FirstName} #{c.LastName}
+                        td #{c.Graded}
+                        td #{c.Location}
+                        td #{c.Height}
+                        td #{c.NumAscents}
+                        td #{c.RecAscent}

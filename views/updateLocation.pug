@@ -1,0 +1,25 @@
+extends layout
+
+block content
+
+        h1 Update: #{location.Name} - #{location.Country} 
+        if location.Notes
+            h4 Current Notes: 
+            p #{location.Notes}
+            p Last Editor: #{lastEditor.FirstName} #{lastEditor.LastName}
+        else
+            p This location doesn't have any information on it...
+            p Add some below!
+        
+        if user
+            form(action="/Locations/"+location.ID+"/editLocation/" method="post" onkeydown="return event.key != 'Enter';")
+                    legend Notes
+                        fieldset
+                        
+                            label(for="notes") Update Notes:
+                            textarea(name="notes" cols="40" rows="20") #{location.Notes}
+                    <button type="submit">Submit </button>
+            span #{msg}
+        else 
+            <a href="/login">Sign in </a>
+            span to edit this location!

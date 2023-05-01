@@ -1,0 +1,71 @@
+extends layout.pug
+
+block content
+
+        h1 My Profile
+        if user
+            form(action="/profile/"+user.ID method="post")
+                section
+                    input(name="ID" value=user.ID type="hidden")
+                legend First Name
+                    fieldset
+                        h4 Current First Name: #{user.FirstName}
+                        label(for="firstName") Update First Name:
+                        input(name="firstName" value=user.FirstName required)
+                legend Last Name
+                    fieldset
+                        h4 Current Last Name: #{user.LastName}
+                        label(for="lastName") Update Last Name:  
+                        input(name="lastName" value=user.LastName required)
+                legend Bio
+                    fieldset     
+                        h4 Current Bio: #{user.Bio}
+                        label(for="bio") Update Bio: 
+                        input(name="bio" type="text" value=user.Bio required)
+                legend Country
+                    fieldset
+                        if user.Location == "Select Country"
+                            h4 Please select a country
+                            label(for="country") Select Country:
+                            select(class="form-select" id="country" name="country")
+                                <option>Select Country</option>
+                                each c in countries
+                                    option(value= c.code) #{c.name} 
+                        else
+                            h4 Current Country: #{user.Location}
+                            label(for="country") Change Country:
+                            select(class="form-select" id="country" name="country")
+                                <option>Select Country</option>
+                                each c in countries
+                                    option(value= c.code) #{c.name} 
+                legend Profile Picture
+                    fieldset
+                        label(for="picture") Picture:
+                        if user.ProfilePicture
+                            a picture here
+                        else
+                            img( src="default.jpg" alt="Defualt Profile Picture" width="500" height="600" )
+                legend Height
+                    fieldset
+                        h4 Current Height: #{user.Height}
+                        label(for="height") Update Height (cm):
+                        input(name="height" value=user.Height required)
+                legend ZGrade
+                    fieldset
+                        label(for="zgrade") ZGrade:
+                        a #{user.Graded}
+                legend Username and Password
+                    fieldset
+                        label(for="username") Username:
+                        input(name="username" value=user.Username required)
+                        label(for="password") Password:
+                        a(href="/ChangePassword") Change Password
+
+                <button type="submit">Update </button>
+                <a href="/">Cancel</a>
+
+                if msg  
+                    p #{msg}
+        else
+            h4 Error, Please return to  
+            a(href="/") Home

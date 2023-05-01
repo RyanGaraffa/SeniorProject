@@ -1,0 +1,23 @@
+doctype html
+html 
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/water.css@2/out/water.min.css">
+    head 
+        title Ryan's Climbing App
+    body 
+        if user
+            p #{user.FirstName} #{user.LastName}  <a href="/signout">Sign out </a>
+        else
+            <a href="/login">Sign in </a>
+
+        table
+            thead
+                tr
+                    th <a href="/">Home </a>
+                    th <a href="/Climbers">Climbers </a>
+                    th <a href="/Locations">Locations </a>
+                    if user
+                        th 
+                            a(href="/profile/" + user.ID) Profile
+
+
+        block content

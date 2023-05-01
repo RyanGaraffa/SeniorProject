@@ -1,0 +1,32 @@
+extends layout.pug
+
+block content
+        h1 Log An Attempt
+        if user === undefined
+            p NOT AUTHORIZED, please sign in :)
+        else
+            h3 Give some info on your session on this climb!
+            form(action="/Locations/"+climb.LocationID+"/Climb/"+climb.ID+"/LogAttempt" method="post")
+                legend Climb Info
+
+                    fieldset
+                        section
+                            label(for="climbName") Climb Name:  
+                            input(name="climbName" readonly="true" value =climb.Name)
+                        section
+                            label(for="numAttempts") Number of Attempts:   
+                            input(name="numAttempts", type="number", min="0" required)
+                        section     
+                            label(for="notes") Notes: 
+                            input(name="notes" type="text")
+                        section
+                            label(for="quality") Quality Rating (Out of 5):  
+                            input(name="quality", type="number", min="0", max="5" placeholder="0-5" required)
+                        section     
+                            label(for="date") Date: 
+                            input(name="date" type="date")
+                <button type="submit">Add </button>
+                <a href="/">Cancel</a>
+
+                if msg  
+                    p #{msg}

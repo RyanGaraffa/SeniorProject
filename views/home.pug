@@ -1,0 +1,22 @@
+extends layout
+
+block content
+
+        h1 Ascent List
+
+        table
+            thead
+                tr
+                    th Climb 
+                    th Climber 
+                    th Grade 
+                    th ZGrade
+                    th Date
+            tbody
+                each a in ascents
+                    tr
+                        td: a(href="/locations/"+a.LocationID+"/Climb/"+a.ClimbID) #{a.ClimbName} 
+                        td #{a.ClimberID}
+                        td #{a.Grade}
+                        td #{a.GradeTaken}
+                        td #{a.Date}

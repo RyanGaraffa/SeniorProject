@@ -1,0 +1,27 @@
+extends layout
+
+block content
+
+        h1 Locations
+        <a href="/addLocation">Add a Location </a>
+        br
+        table
+            thead
+                tr
+                    th Location Name
+                    th Country
+                    th Avg Quality
+                    th Avg Grade
+                    th Number of Climbs
+                    th 'Best' Climb Name
+                    th Grade
+            tbody
+                each l in locations
+                    tr
+                        td: a(href="/Locations/" + l.ID) #{l.Name} 
+                        td #{l.Country}
+                        td #{l.AvgQuality}
+                        td #{l.AvgGrade}
+                        td #{l.NumClimbs}
+                        td #{l.BestClimb}
+                        td #{l.BestGrade}

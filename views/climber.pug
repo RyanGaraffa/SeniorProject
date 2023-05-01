@@ -1,0 +1,66 @@
+extends layout
+
+block content
+
+        h1 #{climber.FirstName} #{climber.LastName}
+        p Bio: #{climber.Bio}
+        if climber.Location == "Select Country"
+            p Location: N/A
+        else
+            p Location: #{climber.Location}
+        p Height (cm): #{climber.Height}
+        if climber.Graded
+            p ZGrade: #{climber.Graded}
+        else
+            p ZGrade: N/A
+        if climber.Role
+            p Role: #{climber.Role}
+        else
+            p Role: N/A
+        h3 Ascents -> #{ascents.length}
+        table
+            thead
+                tr
+                    th Climb 
+                    th Location
+                    th Grade 
+                    th ZGrade
+                    th Quality Given
+                    th Date
+                    th Number of Attempts
+                    th Number of Sessions
+            tbody
+                each a in ascents
+                    tr
+                        td: a(href="/locations/"+a.LocationID+"/Climb/"+a.ClimbID) #{a.ClimbName} 
+                        td #{a.Location}
+                        td #{a.Grade}
+                        td #{a.ZGrade}
+                        td #{a.Quality}
+                        td #{a.Date}
+                        td #{a.NumAttempts}
+                        td #{a.NumSessions}
+
+        h3 Attempts -> #{attempts.length}
+        table
+            thead
+                tr
+                    th Climb 
+                    th Location
+                    th Grade 
+                    th ZGrade
+                    th Quality
+                    th Date
+                    th Number of Attempts
+                    th Country
+            tbody
+                each a in attempts
+                    tr
+                        td: a(href="/locations/"+a.LocationID+"/Climb/"+a.ClimbID) #{a.ClimbName} 
+                        td #{a.Location}
+                        td #{a.Grade}
+                        td #{a.ZGrade}
+                        td #{a.Quality}
+                        td #{a.Date}
+                        td #{a.NumAttempts}
+                        td #{a.country}

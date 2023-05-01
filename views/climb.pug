@@ -1,0 +1,50 @@
+extends layout
+
+block content
+
+        if climb == undefined
+            p Error, Climb is undefined
+        else if location == undefined
+            p Error, Location undefined
+
+        else
+            h1 #{climb.Name}
+            if user
+                a(href="/Locations/"+location.ID+"/Climb/"+climb.ID+"/LogAscent") Log an Ascent
+                br
+                a(href="/Locations/"+location.ID+"/Climb/"+climb.ID+"/LogAttempt") Log Attempts
+                br
+            a(href="/Locations/" + location.ID) Back to #{location.Name}
+
+            p Location: #{location.Name}
+            p Grade: #{climb.Grade}
+            span ZGrade: 
+            a(href="/Locations/"+location.ID+"/Climb/"+climb.ID+"/Reasoning") #{climb.ZGrade} 
+            p Average Height: #{climb.AvgHeight}
+            p Quality: #{climb.Quality}  / 4
+            p Ascents: #{climb.NumAscents}
+            p Most Recent Ascent: #{climb.MostRecAscent}
+
+            h3 Ascents -> #{ascents.length}
+            table
+                thead
+                    tr
+                        th Climber 
+                        th Grade Taken
+                        th Quality Given
+                        th Date
+                        th Number of Attempts
+                        th Number of Sessions
+                        th Height
+                        th Notes
+                tbody
+                    each a in ascents
+                        tr
+                            td: a(href="/Climbers/"+a.ClimberID) #{a.ClimberName} 
+                            td #{a.GradeTaken}
+                            td #{a.Quality}
+                            td #{a.Date}
+                            td #{a.NumAttempts}
+                            td #{a.NumSessions}
+                            th #{a.Height}
+                            td #{a.Notes}

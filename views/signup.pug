@@ -1,0 +1,51 @@
+doctype html
+html 
+    head 
+        title Sign up
+    body 
+        h1 Sign up
+
+        p Please select a username, and a password. Don't worry about any password rules here, we don't really care much about protecting your information - so helloworld is just fine by us!
+
+        form(action="/signup" method="post") 
+            fieldset
+                section
+                    label(for="firstName") First Name:  
+                    input(name="firstName" required)
+                section
+                    label(for="lastName") Last Name:  
+                    input(name="lastName" required)
+                section
+                    label(for="height") Height (cm):  
+                    input(name="height" type="number" required)
+                section
+                    label(for="bio") Bio:  
+                    input(name="bio")
+                section
+                    select(class="form-select" id="country" name="country" required)
+                        <option>Select Country</option>
+                        each c in countries
+                            option(value= c.code) #{c.name} 
+                
+
+            fieldset  
+                section
+                    label(for="username") Username:  
+                    input(name="username" required)
+                section
+                    label(for="password") Password:  
+                    input(name="password" type="password" required)
+                section
+                    label(for="password2") Confirm Password:  
+                    input(name="password2" type="password" required)
+
+            <button type="submit">Sign up </button>
+            <a href="/">Nevermind</a>
+
+        if msg === undefined 
+                
+        else 
+            p #{msg}
+
+        p Already have an account? 
+            <a href="/login">Sign in here!</a>

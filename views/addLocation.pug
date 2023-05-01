@@ -1,0 +1,26 @@
+extends layout.pug
+
+block content
+        h1 Add a Location
+        form(action="/addLocation" method="post")
+            legend Location Info
+                fieldset
+                    section
+                        label(for="locationName") Location Name:  
+                        input(name="locationName" required)
+                    section
+                        label(for="country") Country:
+                        select(class="form-select" id="country" name="country")
+                            <option>Select Country</option>
+                            each c in countries
+                                option(value= c.code) #{c.name} 
+
+                    section     
+                        label(for="notes") (NOT USED) Notes: 
+                        input(name="notes" type="text")
+
+            <button type="submit">Add </button>
+            <a href="/">Cancel</a>
+            
+            if msg  
+                p #{msg}

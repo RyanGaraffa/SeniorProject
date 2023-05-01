@@ -1,0 +1,32 @@
+extends layout.pug
+
+block content
+        h1 Add a Climb
+        form(action="/locations/"+location.ID  method="post")
+            legend Climb Info
+                fieldset
+                    section
+                        label(for="climbName") Climb Name:  
+                        input(name="climbName" required)
+                    section
+                            label(for="location") Location:
+                            if location
+                                input(name="location" value=location.Name readonly="true")
+                                input(name="locationID" value=location.ID type="hidden")
+                            else
+                                input(name="location" required)
+                    section
+                        label(for="grade") Community Grade (V):  
+                        input(name="grade", type="number", min="0", max="17" placeholder="0-5" required)
+                    section     
+                        label(for="notes") (NOT USED) Notes: 
+                        input(name="notes" type="text")
+
+            <button type="submit">Add </button>
+            if location
+                a(href="/locations/" + location.ID) Cancel
+            else
+                <a href="/">Cancel</a>
+
+            if msg  
+                p #{msg}

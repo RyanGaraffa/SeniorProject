@@ -1,0 +1,43 @@
+extends layout
+
+block content
+
+        h1 #{location.Name} - #{location.Country} 
+        if location.Notes
+            h4 #{location.Notes}
+        else
+            span This location Doesn't have any Information on it, Add some below! 
+            br
+        a(href="/Locations/" + location.ID + "/addClimb/") Add a Climb 
+        br
+        a(href="/Locations/" + location.ID + "/editLocation/") Edit Location Info 
+        table
+            thead
+                tr
+                    th Climb Name
+                    th Grade
+                    th Quality
+                    th Number of Ascents
+                    th Most Recent Ascent
+                    th ZGrade
+            tbody
+                each c in climbs
+                    tr
+                        td: a(href="/locations/"+location.ID+"/Climb/"+c.ID) #{c.Name} 
+                        td V#{c.Grade}
+                        if c.Quality
+                            td #{c.Quality}
+                        else
+                            td --
+                        if c.NumAscents
+                            td #{c.NumAscents}
+                        else
+                            td --
+                        if c.RecAscentID
+                            td #{c.RecAscentID}
+                        else
+                            td --
+                        if c.GradeCalculated
+                            td #{c.GradeCalculated}
+                        else
+                            td --

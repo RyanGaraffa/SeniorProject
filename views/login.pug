@@ -1,0 +1,24 @@
+doctype html
+html 
+    head 
+        title Login
+    body 
+        h1 Sign in
+        form(action="/login" method="post") 
+            fieldset  
+                section
+                    label(for="username") Username:  
+                    input(name="username" required)
+                section
+                    label(for="password") Password:  
+                    input(name="password" type="password" required)
+
+            <button type="submit">Sign in </button>
+            <a href="/">Nevermind</a>
+
+        if msg
+            p #{msg}
+
+        p Don't have an account? 
+            <a href="/signup">Sign up here!</a>
+
