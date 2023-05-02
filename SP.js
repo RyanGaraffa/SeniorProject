@@ -1545,12 +1545,17 @@ const climbers = async (req, res) => {
         climber.RecAscent = recAscentName[0].Name;
 
         //Find ZGrade
-        const Z = calculateZGradeClimber(climber);
-        climber.ZGrade = z.ZGrade;
-        await db.update('User',
-            [{ column: 'Graded', value: climber.ZGrade }],
-            [{ column: 'ID', value: climber.ID }]
-        );
+        const Z = await calculateZGradeClimber(climber);
+        climber.ZGrade = Z.ZGrade;
+        if (climber.ZGrade != null) {
+            await db.update('User',
+                [{ column: 'Graded', value: climber.ZGrade }],
+                [{ column: 'ID', value: climber.ID }]
+            );
+        }
+        else {
+            console.log("ZGrade determined to be null for climber: " + climber.ID);
+        }
 
     }
     
@@ -2095,7 +2100,6 @@ RETURNS
 
 */
 /**/
-//Calculate ZGrade for particular climber!
 const calculateZGradeClimber = async (climber) => {
     let toRETURN = { ZGrade: 0, Reasoning: "N/A" }
     let Reasoning = ['ZGrade Reasoning\n'];
@@ -2134,13 +2138,13 @@ const calculateZGradeClimber = async (climber) => {
                     }
                     else if (gradeClimbMax = climb[0].Grade) {
                         solidify += 1;
-                        if (ascent.NumAttempts < 10 && ascent.NumSessions < 2) {
-                            //Climber did a climb of their max grade in a session in less than 10 attempts
-                            solidify += 7;
-                        }
-                        else if (ascent.NumAttempts <= 2 && ascent.NumSessions < 2) {
+                        if (ascent.NumAttempts <= 2 && ascent.NumSessions < 2) {
                             //Climber either flashed or 2nd goed a climb of their max grade
                             solidify += 14
+                        } 
+                        else if (ascent.NumAttempts < 10 && ascent.NumSessions < 2) {
+                            //Climber did a climb of their max grade in a session in less than 10 attempts
+                            solidify += 7;
                         }
                     }
                 }
@@ -2152,9 +2156,13 @@ const calculateZGradeClimber = async (climber) => {
 
             }
 
+
             //calculate averages
             zGradeClimbMax = zGradeClimbMax / 2;
             gradeClimbMax = gradeClimbMax * (50 + (2 * solidify));
+
+            console.log("zGradeClimbMax: " + zGradeClimbMax + "   gradeClimbMax: " + gradeClimbMax);
+            console.log("ZGrade will be set to: " + Math.round(zGradeClimbMax + gradeClimbMax) + "  For Climber: " + climber.ID);
 
             //Average both of those stats
             toRETURN.ZGrade = Math.round(zGradeClimbMax + gradeClimbMax);
