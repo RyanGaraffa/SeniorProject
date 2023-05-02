@@ -6,7 +6,8 @@ block content
         if location.Notes
             h4 Current Notes: 
             p #{location.Notes}
-            p Last Editor: #{lastEditor.FirstName} #{lastEditor.LastName}
+            if lastEditor
+                p Last Editor: #{lastEditor.FirstName} #{lastEditor.LastName}
         else
             p This location doesn't have any information on it...
             p Add some below!

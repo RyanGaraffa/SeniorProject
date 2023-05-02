@@ -10,7 +10,8 @@ block content
             p Location: #{climber.Location}
         p Height (cm): #{climber.Height}
         if climber.Graded
-            p ZGrade: #{climber.Graded}
+            span ZGrade: 
+            a(href="/Climbers/"+climber.ID+"/Reasoning") #{climber.Graded} 
         else
             p ZGrade: N/A
         if climber.Role

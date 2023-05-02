@@ -240,8 +240,8 @@ const ZGradeCalcs = async () => {
     }
 
     try {
-        let climbers = await db.read('User', []);
-        for (climber of climbers) {
+        let users = await db.read('User', []);
+        for (climber of users) {
             const ZG = await calculateZGradeClimber(climber);
             console.log("About to Update user: " + climber.ID + " with ZGrade: " + ZG.ZGrade);
             await db.update('User',
@@ -696,7 +696,7 @@ const profileUpdate = async (req, res) => {
 }
 
 /**/
-/*
+ /*
 aysnc logAscent()
 
 NAME
@@ -1576,30 +1576,29 @@ RETURNS
 
 */
 /**/
-//Loads up Climbers Page and displays Climbers
 const climbers = async (req, res) => {
-    const climbers = await db.read('User', []);
+    let users = await db.read('User', []);
 
     //Troubleshot Log
     //console.log("# of climbers read in system: " + climbs.length);
 
     //Add Information on NumAscents and RecAscent
-    for (climber of climbers) {
+    for (climber of users) {
         //Gather Ascents of this Climber
-        const Ascents = await db.read('Ascent', [{ column: 'ClimberID', value: climber.ID }]);
+        const ascents = await db.read('Ascent', [{ column: 'ClimberID', value: climber.ID }]);
         //Climber has no ascents
-        if (Ascents.length < 1) {
+        if (ascents.length < 1) {
             console.log("Climber: " + climber.ID + " has no Ascents");
             climber.NumAscents = 0;
             climber.RecAscent = "None";
             continue;
         }
         //Update NumAscents
-        climber.NumAscents = Ascents.length;
+        climber.NumAscents = ascents.length;
 
         //Figure our RecAscent
-        let mostRecAscent = Ascents[0];
-        for (a of Ascents) {
+        let mostRecAscent = ascents[0];
+        for (a of ascents) {
             if (await findRecentAscent(await readDate(a.Date), await readDate(mostRecAscent.Date))) {
                 //Current Ascent is more recent than previous though most recent
                 mostRecAscent = a;
@@ -1624,8 +1623,8 @@ const climbers = async (req, res) => {
         }
 
     }
-    
-    res.render('climbers', { climbers: climbers });
+    users = await db.read('User', []);
+    res.render('climbers', { climbers: users });
     return;
 }
 
@@ -1789,6 +1788,7 @@ const locations = async (req, res) => {
             [{ column: 'NumClimbs', value: climbs.length }],
             [{ column: 'ID', value: loc.ID }]
         );
+        loc.NumClimbs = climbs.length;
 
         if (climbs.length > 0) {
 
@@ -1987,7 +1987,7 @@ const calculateZGradeClimb = async (climb) => {
         }
 
         //Calculate Averages
-        GT = GT / ascents.length * 100; // Now holds average Grade taken
+        GT = GT / ascents.length * 100; // Now holds average Grade taken in 3 figures
         NA = NA / ascents.length;
         NS = NS / ascents.length;
         HV = HV / ascents.length; // Holds Average Height;
@@ -2004,21 +2004,21 @@ const calculateZGradeClimb = async (climb) => {
 
                //See if climber is weak or strong for climb
                 //Climber is signifigantly stronger than climb
-                if (climber[0].Graded > Base + 1) {
+                if (climber[0].Graded > Base * 100 + 100) {
                     stronger += 1;
 
                     //Check for Sandbaggers
-                    if (ascent.GradeTaken < GT) {
+                    if (ascent.GradeTaken * 100 < GT) {
                         ZGrade *= 1.02;
                         Reasoning.push("Sandbagger Found -> 1.02 multiplier\n");
                     }
                 }
                 //Climber is signifigantly weaker than climb
-                else if (climber[0].Graded < Base - 1) {
+                else if (climber[0].Graded < Base * 100 - 100) {
                     weaker += 1;
 
                     //Check for Grade Chasers
-                    if (ascent.GradeTaken > GT) {
+                    if (ascent.GradeTaken * 100 > GT) {
                         ZGrade *= 0.98;
                         Reasoning.push("Grade Chaser Found -> 0.98 multiplier\n");
                     }
@@ -2030,7 +2030,7 @@ const calculateZGradeClimb = async (climb) => {
                     tall += 1;
 
                     //Check for tall sandbagger
-                    if (ascent.GradeTaken < GT) {
+                    if (ascent.GradeTaken * 100 < GT) {
                         ZGrade *= 1.025;
                         Reasoning.push("Tall Sandbagger Found -> 1.025 multiplier\n");
                     }
@@ -2040,7 +2040,7 @@ const calculateZGradeClimb = async (climb) => {
                     short += 1;
 
                     //Check for short grade chaser
-                    if (ascent.GradeTaken > GT) {
+                    if (ascent.GradeTaken * 100 > GT) {
                         ZGrade *= 0.99;
                         Reasoning.push("Short Grade Chaser Found -> 0.99 multiplier\n");
                     }
@@ -2069,7 +2069,7 @@ const calculateZGradeClimb = async (climb) => {
 
        //Compare Avg Grade Taken to Base Grade
         //Most people call it soft
-        if (GT < Base) {
+        if (GT < Base * 100) {
             ZGrade *= 0.975;
             Reasoning.push("Most people call climb soft -> 0.975 multiplier\n");
         }
@@ -2182,12 +2182,21 @@ const calculateZGradeClimber = async (climber) => {
     //Find Climber's ascents
     try {
         const ascents = await db.read('Ascent', [{ column: 'ClimberID', value: climber.ID }]);
-        
+
+        //No Ascents
         if (ascents.length < 1) {
             console.log("Climber: " + climber.ID + " has no logged ascents");
             return toRETURN;
         }
-        
+        //Check if exactly 1 ascent
+        if (ascents.length < 2) {
+            const climb = await db.read('Climb', [{ column: 'ID', value: ascents[0].ClimbID }]);
+            toRETURN.ZGrade = climb[0].GradeCalculated;
+            Reasoning.push("Only one ascent, matched to ZGrade of climb");
+            toRETURN.Reasoning = Reasoning;
+            return toRETURN;
+        }
+        //2+ Ascents
         else {
             
             //Declare some variables to collect max
@@ -2196,14 +2205,14 @@ const calculateZGradeClimber = async (climber) => {
             let solidify = 0; // If people sent multiple of max grade, they get solidified
 
             for (ascent of ascents) {
+                const climb = await db.read('Climb', [{ column: 'ID', value: ascent.ClimbID }]);
                 //Filter out mega megas
-                if (ascent.NumSessions > 10) {
+                if (ascent.NumSessions > 10 && climb[0].Grade == gradeClimbMax) {
+                    solidify += 1;
                     continue;
                 }
                 
                 try {
-                    const climb = await db.read('Climb', [{ column: 'ID', value: ascent.ClimbID }]);
-
                     if (zGradeClimbMax < climb[0].GradeCalculated) {
                         zGradeClimbMax = climb[0].GradeCalculated;
                     }
@@ -2230,7 +2239,6 @@ const calculateZGradeClimber = async (climber) => {
                 }
 
             }
-
 
             //calculate averages
             zGradeClimbMax = zGradeClimbMax / 2;
@@ -2277,11 +2285,20 @@ RETURNS
 */
 /**/
 const reasoning = async (req, res) => {
-    currClimb = await db.read('Climb', [{ column: 'ID', value: req.params.ClimbID }]);
-    const ZG = await calculateZGradeClimb(currClimb[0]);
+    if (req.params.ClimbID != null) {
+        currClimb = await db.read('Climb', [{ column: 'ID', value: req.params.ClimbID }]);
+        const ZG = await calculateZGradeClimb(currClimb[0]);
 
-    res.render('reasoning', { ZGrade: ZG.ZGrade, reasoning: ZG.Reasoning });
-    return;
+        res.render('reasoning', { ZGrade: ZG.ZGrade, reasoning: ZG.Reasoning });
+        return;
+    }
+    else {
+        currClimber = await db.read('User', [{ column: 'ID', value: req.params.ID }]);
+        const ZG = await calculateZGradeClimber(currClimber[0]);
+
+        res.render('reasoning', { ZGrade: ZG.ZGrade, reasoning: ZG.Reasoning });
+        return;
+    }
 }
 
 //Reuseable Code for Country selection
@@ -2601,6 +2618,9 @@ const routing = async () => {
 
     app.get('/Climbers/:ID', climberPage);
     app.post('/Climbers/:ID', climberPage);
+
+    app.get('/Climbers/:ID/Reasoning', reasoning);
+    app.post('/Climbers/:ID/Reasoning', reasoning);
 
     app.get('/addClimb', addClimb);
     app.post('/addClimb', addClimb);
