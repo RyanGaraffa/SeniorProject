@@ -2188,6 +2188,10 @@ const calculateZGradeClimber = async (climber) => {
             console.log("Climber: " + climber.ID + " has no logged ascents");
             return toRETURN;
         }
+        if (ascents.length < 5) {
+            Reasoning.push("Very Few Ascents, Take Reasoning with a grain of salt");
+        }
+
         //Check if exactly 1 ascent
         if (ascents.length < 2) {
             const climb = await db.read('Climb', [{ column: 'ID', value: ascents[0].ClimbID }]);
@@ -2196,6 +2200,7 @@ const calculateZGradeClimber = async (climber) => {
             toRETURN.Reasoning = Reasoning;
             return toRETURN;
         }
+        
         //2+ Ascents
         else {
             
@@ -2207,8 +2212,7 @@ const calculateZGradeClimber = async (climber) => {
             for (ascent of ascents) {
                 const climb = await db.read('Climb', [{ column: 'ID', value: ascent.ClimbID }]);
                 //Filter out mega megas
-                if (ascent.NumSessions > 10 && climb[0].Grade == gradeClimbMax) {
-                    solidify += 1;
+                if (ascent.NumSessions > 10) {
                     continue;
                 }
                 
@@ -2216,19 +2220,20 @@ const calculateZGradeClimber = async (climber) => {
                     if (zGradeClimbMax < climb[0].GradeCalculated) {
                         zGradeClimbMax = climb[0].GradeCalculated;
                     }
-                    if (gradeClimbMax < climb[0].Grade) {
+                    if (Number(gradeClimbMax) < Number(climb[0].Grade)) {
+                        console.log("gradeClimbMax: " + gradeClimbMax + "climb[0].Grade: " + climb[0].Grade);
                         gradeClimbMax = climb[0].Grade;
                         solidify = 0;
                     }
-                    else if (gradeClimbMax = climb[0].Grade) {
+                    else if (gradeClimbMax == climb[0].Grade) {
                         solidify += 1;
                         if (ascent.NumAttempts <= 2 && ascent.NumSessions < 2) {
                             //Climber either flashed or 2nd goed a climb of their max grade
-                            solidify += 14
+                            solidify += 4
                         } 
                         else if (ascent.NumAttempts < 10 && ascent.NumSessions < 2) {
                             //Climber did a climb of their max grade in a session in less than 10 attempts
-                            solidify += 7;
+                            solidify += 2;
                         }
                     }
                 }
@@ -2240,14 +2245,23 @@ const calculateZGradeClimber = async (climber) => {
 
             }
 
+            Reasoning.push("Max ZGrade Climbed: " + zGradeClimbMax);
+            Reasoning.push("Max Grade Climbed: " + gradeClimbMax);
+            Reasoning.push("Solidify Factor: " + solidify);
+            Reasoning.push("Solidify Factor is added to total twice");
+            console.log("Max Grade Climbed: " + gradeClimbMax);
+
+
             //calculate averages
             zGradeClimbMax = zGradeClimbMax / 2;
-            gradeClimbMax = gradeClimbMax * (50 + (2 * solidify));
+            gradeClimbMax = gradeClimbMax * 50 + (2 * solidify);
+
 
             console.log("zGradeClimbMax: " + zGradeClimbMax + "   gradeClimbMax: " + gradeClimbMax);
             console.log("ZGrade will be set to: " + Math.round(zGradeClimbMax + gradeClimbMax) + "  For Climber: " + climber.ID);
 
             //Average both of those stats
+            toRETURN.Reasoning = Reasoning;
             toRETURN.ZGrade = Math.round(zGradeClimbMax + gradeClimbMax);
 
         }
