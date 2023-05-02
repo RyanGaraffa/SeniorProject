@@ -1544,6 +1544,14 @@ const climbers = async (req, res) => {
 
         climber.RecAscent = recAscentName[0].Name;
 
+        //Find ZGrade
+        const Z = calculateZGradeClimber(climber);
+        climber.ZGrade = z.ZGrade;
+        await db.update('User',
+            [{ column: 'Graded', value: climber.ZGrade }],
+            [{ column: 'ID', value: climber.ID }]
+        );
+
     }
     
     res.render('climbers', { climbers: climbers });
@@ -1883,8 +1891,6 @@ const calculateZGradeClimb = async (climb) => {
         let stronger = 0; //number of climbers who are considered 'Strong' for this climb
         let weaker = 0; //number of climbers who are considered weak for this climb
 
-        console.log('Here');
-
         for (ascent of ascents) {
             //Tally up totals to later take average for some stats
             GT += ascent.GradeTaken;
@@ -2111,7 +2117,6 @@ const calculateZGradeClimber = async (climber) => {
             let solidify = 0; // If people sent multiple of max grade, they get solidified
 
             for (ascent of ascents) {
-                console.log("Here");
                 //Filter out mega megas
                 if (ascent.NumSessions > 10) {
                     continue;
