@@ -7,6 +7,7 @@ block content
         else
             if ascent
                 h2 NOTE! You have already logged an ascent of this climb, logging another will overwrite your current Ascent
+                p #{ascent.ID}
 
             form(action="/Locations/"+climb.LocationID+"/Climb/"+climb.ID+"/LogAscent" method="post")
                 legend Climb Info
@@ -32,7 +33,7 @@ block content
                             input(name="gradeTaken", type="number", min="0", max="17" placeholder="0-17" required)
                         section     
                             label(for="date") Date: 
-                            input(name="date" type="date")
+                            input(name="date" type="date" max=today)
                 <button type="submit">Add </button>
                 <a href="/">Cancel</a>
 

@@ -721,6 +721,8 @@ DESCRIPTION
         of the same climb by the same user.
 
     Note: This Should Probably be broken down into a few seperate functions.
+    Note: Weird bug where if I did not pass an ascent, the program would find 
+    an ascent of the climb from a different user. or just make one up?
 
 RETURNS
 
@@ -748,28 +750,44 @@ const logAscent = async (req, res) => {
     const currClimb = await db.read('Climb', [{ column: 'ID', value: req.params.ClimbID }]);
     if (currClimb === undefined) {
         //Could pass more data back here to user doesnt have to retype all data
-        res.render('logAscent', { climb: currClimb[0], msg: "Climb not recognized" });
+        res.render('/', { msg: "Climb not recognized in Log Ascent, Redirected Home" });
         return;
     }
+
+    //Make sure users cannot log ascents in future
+    const today = await getToday();
 
     //On load up
     if (req.body.numAttempts === undefined) {
         console.log("Rendering Log Ascent");
 
         //Check if User already has a logged ascent
-        const ascents = await db.read('Ascent', [{ column: 'ClimberID', value: req.session.user.ID }]);
+        const ascents = await db.read('Ascent', [{ column: 'ClimberID', value: req.session.user.ID}]);
         for (a of ascents) {
-
-            if (a.ClimbID == currClimb[0].ID) {
+            /*Debugging
+            console.log(a);
+            console.log(req.params.ClimbID);
+            */
+            if(a.ClimbID == req.params.ClimbID) { //Updated
                 //This Climber has logged an Ascent of this climb already
-                res.render('logAscent', { climb: currClimb[0], ascent: a});
+                res.render('logAscent', {
+                    climb: currClimb[0],
+                    ascent: a,
+                    today: today
+                });
                 return;
             }
         }
 
-        res.render('logAscent', { climb: currClimb[0] });
+        res.render('logAscent', {
+            climb: currClimb[0],
+            today: today,
+            ascent: null
+        });
         return;
     }
+
+    //Code Below runs when we have a post Request and we are logging an ascent
 
     //Check for Attempt Object! If so Delete it
     try {
@@ -831,7 +849,12 @@ const logAscent = async (req, res) => {
     //Call some async functions to update climb info
     await updateClimb(currClimb[0].ID, aID);
 
-    res.render('logAscent', { climb: currClimb[0], msg: "Ascent of: " + currClimb[0].Name + " was added successfully" });
+    res.render('logAscent', {
+        climb: currClimb[0],
+        ascent: null,
+        msg: "Ascent of: " + currClimb[0].Name + " was added successfully",
+        today: today
+    });
     return;
 }
 
@@ -1375,6 +1398,44 @@ const updateLocation = async (req, res) => {
 
 /**/
 /*
+aysnc getToday()
+
+NAME
+
+        async getToday() - returns a formatted version of the date
+
+SYNOPSIS
+
+        async getToday(date);
+            no Params
+
+DESCRIPTION
+
+        This function will return the date in proper html format to set max
+        date for log ascent calander.
+
+RETURNS
+
+        Returns yyy-mm-dd
+
+*/
+/**/
+const getToday = async () => {
+    var dtToday = new Date();
+    var month = dtToday.getMonth() + 1;
+    var day = dtToday.getDate();
+    var year = dtToday.getFullYear();
+    if (month < 10)
+        month = '0' + month.toString();
+    if (day < 10)
+        day = '0' + day.toString();
+
+    var maxDate = year + '-' + month + '-' + day;
+    return maxDate;
+}
+
+/**/
+/*
 aysnc readDate()
 
 NAME
@@ -1539,9 +1600,9 @@ const climbers = async (req, res) => {
         //Figure our RecAscent
         let mostRecAscent = Ascents[0];
         for (a of Ascents) {
-            if (findRecentAscent(readDate(a.Date), readDate(mostRecAscent.Date))) {
+            if (await findRecentAscent(await readDate(a.Date), await readDate(mostRecAscent.Date))) {
                 //Current Ascent is more recent than previous though most recent
-                RecAscent = a;
+                mostRecAscent = a;
             }
         }
 
@@ -1737,6 +1798,7 @@ const locations = async (req, res) => {
             let MaxQuality = 0
             let BestID = -1;
             let BestGrade = 0;
+            let ascended = climbs.length;
 
             //Loop through climbs of location
             for (climb of climbs) {
@@ -1752,21 +1814,29 @@ const locations = async (req, res) => {
                     loc.BestClimb = climb.Name;
                     loc.BestGrade = climb.Grade;
                 }
+                if (climb.NumAscents < 1 || climb.NumAscents == null) {
+                    ascended -= 1;
+                }
             }
 
             //Update AvgGrade
+            //Round to 100th while calulating average
+            AvgGrade = Math.round(AvgGrade / climbs.length * 100) / 100;
+            
             await db.update('Location',
-                [{ column: 'AvgGrade', value: (AvgGrade / climbs.length) }],
+                [{ column: 'AvgGrade', value: AvgGrade }],
                 [{ column: 'ID', value: loc.ID }]
             );
-            loc.AvgGrade = (AvgGrade / climbs.length);
+            loc.AvgGrade = AvgGrade;
 
             //Update AvgQuality
+            //Round to 100th while calulating average
+            AvgQuality = Math.round(AvgQuality / ascended * 100) / 100;
             await db.update('Location',
-                [{ column: 'AvgQuality', value: (AvgQuality / climbs.length) }],
+                [{ column: 'AvgQuality', value: AvgQuality }],
                 [{ column: 'ID', value: loc.ID }]
             );
-            loc.AvgQuality = (AvgQuality / climbs.length);
+            loc.AvgQuality = AvgQuality;
 
             //Update Best Climb ID
             if (BestID == -1) {
