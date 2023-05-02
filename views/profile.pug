@@ -38,7 +38,7 @@ block content
                                 <option>Select Country</option>
                                 each c in countries
                                     option(value= c.code) #{c.name} 
-                legend Profile Picture
+                //legend Profile Picture
                     fieldset
                         label(for="picture") Picture:
                         if user.ProfilePicture
@@ -59,7 +59,7 @@ block content
                         label(for="username") Username:
                         input(name="username" value=user.Username required)
                         label(for="password") Password:
-                        a(href="/ChangePassword") Change Password
+                        a(href="/ChangePassword") Change Password (Not Implemented)
 
                 <button type="submit">Update </button>
                 <a href="/">Cancel</a>

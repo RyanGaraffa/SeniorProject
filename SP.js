@@ -644,7 +644,7 @@ RETURNS
 const profileUpdate = async (req, res) => {
     
     if (req.session.user) {
-        const currUser = await db.read('User', [{ column: 'ID', value: req.session.user.ID }]);
+        let currUser = await db.read('User', [{ column: 'ID', value: req.session.user.ID }]);
 
         //Do the Updating of INFO
         await db.update('User',
@@ -659,16 +659,19 @@ const profileUpdate = async (req, res) => {
             [{ column: 'Bio', value: req.body.bio }],
             [{ column: 'ID', value: req.session.user.ID }]
         );
+
+        if (req.body.country != "Select Country") {
+            await db.update('User',
+                [{ column: 'Location', value: req.body.country }],
+                [{ column: 'ID', value: req.session.user.ID }]
+            );
+        }
         /*
         await db.update('User',
             [{ column: 'ProfilePicture', value: req.body.picture }],
             [{ column: 'ID', value: req.session.user.ID }]
         );
         */
-        await db.update('User',
-            [{ column: 'Location', value: req.body.country }],
-            [{ column: 'ID', value: req.session.user.ID }]
-        );
         await db.update('User',
             [{ column: 'Height', value: req.body.height }],
             [{ column: 'ID', value: req.session.user.ID }]
@@ -680,6 +683,8 @@ const profileUpdate = async (req, res) => {
 
 
         const c = await countries();
+        currUser = await db.read('User', [{ column: 'ID', value: req.session.user.ID }]);
+        req.session.user = currUser[0];
         res.render('profile', { user: currUser[0], countries: c, msg: "Profile info has been updated"});
         return;
     }
@@ -1330,14 +1335,14 @@ const updateLocation = async (req, res) => {
                 [{ column: 'LastEditor', value: req.session.user.ID }],
                 [{ column: 'ID', value: req.params.ID }]
             );
-
-            const lastEditor = { FirstName: req.session.user.FirstName, LastName: req.session.user.LastName };
+            const lastEditor = await db.read('User', [{ column: 'ID', value: location[0].LastEditor }]);
+            //const lastEditor = { FirstName: req.session.user.FirstName, LastName: req.session.user.LastName };
             location = await db.read('Location', [{ column: 'ID', value: req.params.ID }]);
             res.render('updateLocation',
                 {
                     location: location[0],
                     notes: location[0].Notes,
-                    lastEditor: lastEditor,
+                    lastEditor: lastEditor[0],
                     msg: "Location notes updated successfully"
                 });
             return;
@@ -1357,7 +1362,7 @@ const updateLocation = async (req, res) => {
         
     }
 
-    const lastEditor = await db.read('User', [{ column: 'ID', value: location[0].ID }]);
+    const lastEditor = await db.read('User', [{ column: 'ID', value: location[0].LastEditor }]);
     res.render('updateLocation',
         {
             location: location[0],
