@@ -1623,7 +1623,7 @@ const climbers = async (req, res) => {
         }
 
     }
-    users = await db.read('User', []);
+    //users = await db.read('User', []);
     res.render('climbers', { climbers: users });
     return;
 }
