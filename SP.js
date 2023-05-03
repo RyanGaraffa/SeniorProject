@@ -1584,58 +1584,30 @@ const editClimb = async (req, res) => {
         res.redirect('/');
         return;
     }
-    res.render('editClimb', {climb: climb[0], location: location[0]});
-    //res.redirect('/');
-    return;
-
-    if (req.method == "POST") {
-        //We are trying to update info
-
+    if (req.method == "GET") {
+        res.render('editClimb', { climb: climb[0], location: location[0] });
+        return;
+    }
+    else {
         try {
-            await db.update('Location',
-                [{ column: 'Notes', value: notes }],
-                [{ column: 'ID', value: req.params.ID }]
+            await db.update('Climb',
+                [{ column: 'Name', value: req.body.name }],
+                [{ column: 'ID', value: req.params.ClimbID }]
             );
-            await db.update('Location',
-                [{ column: 'LastEditor', value: req.session.user.ID }],
-                [{ column: 'ID', value: req.params.ID }]
+            await db.update('Climb',
+                [{ column: 'Grade', value: req.body.grade }],
+                [{ column: 'ID', value: req.params.ClimbID }]
             );
-            const lastEditor = await db.read('User', [{ column: 'ID', value: location[0].LastEditor }]);
-            //const lastEditor = { FirstName: req.session.user.FirstName, LastName: req.session.user.LastName };
-            location = await db.read('Location', [{ column: 'ID', value: req.params.ID }]);
-            res.render('updateLocation',
-                {
-                    location: location[0],
-                    notes: location[0].Notes,
-                    lastEditor: lastEditor[0],
-                    msg: "Location notes updated successfully"
-                });
+            climb = await db.read('Climb', [{ column: 'ID', value: req.params.ClimbID }]);
+            res.render('editClimb', { climb: climb[0], location: location[0], msg: "Updated Successfully"});
             return;
         }
         catch {
-            console.log("Error in Update Location -> might render incorrectly");
-            const lastEditor = await db.read('User', [{ column: 'ID', value: location[0].LastEditor }]);
-            res.render('updateLocation',
-                {
-                    location: location[0],
-                    notes: location[0].Notes,
-                    lastEditor: lastEditor[0],
-                    msg: "Location notes update failed, reason unknown"
-                });
-            return;
+            console.log("Error updating Climb: " + climb[0].ID);
         }
 
     }
-
-    const lastEditor = await db.read('User', [{ column: 'ID', value: location[0].LastEditor }]);
-    res.render('updateLocation',
-        {
-            location: location[0],
-            notes: location[0].Notes,
-            lastEditor: lastEditor[0],
-            msg: "You will (hopefully) see a success message here after updating!"
-        });
-    return;
+   
 }
 
 /**/
