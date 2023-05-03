@@ -20,8 +20,21 @@ block content
                     tr
                         td: a(href="/Locations/" + l.ID) #{l.Name} 
                         td #{l.Country}
-                        td #{l.AvgQuality}
-                        td #{l.AvgGrade}
+                        if l.AvgQuality
+                            td #{l.AvgQuality}
+                        else
+                            td --
+                        if l.AvgGrade != NaN
+                            td #{l.AvgGrade}
+                        else
+                            td --
                         td #{l.NumClimbs}
-                        td #{l.BestClimb}
-                        td #{l.BestGrade}
+                        if l.BestClimb != "None"
+                            td #{l.BestClimb}
+                        else
+                            td --
+                        if l.BestGrade != "N/a"
+                            td #{l.BestGrade}
+                        else
+                            td --
+

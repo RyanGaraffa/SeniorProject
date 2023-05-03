@@ -24,7 +24,12 @@ block content
                             label(for="notes") Notes: 
                             textarea(name="notes" type="text")
                         <button type="submit">Submit </button>
-            span #{msg}
+            
         else 
             <a href="/login">Sign in </a>
             span to edit this climb!
+
+        br
+        a(href="/Locations/" + location.ID + "/Climb/" + climb.ID) Back to Climb
+        br
+        span #{msg}

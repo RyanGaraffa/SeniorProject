@@ -33,6 +33,160 @@ app.use((req, res, next) => {
 
 app.set('view engine', 'pug');
 
+
+            //CORE FUNCTIONS + HOME
+/**/
+/*
+aysnc routing()
+
+NAME
+
+        async routing() - Initializes our routes
+
+SYNOPSIS
+
+        async routing();
+            No Params
+
+DESCRIPTION
+
+        This function will initialize all of our routes. It is called
+        Immedietly on program execution.
+
+RETURNS
+
+        Returns nothing
+
+*/
+/**/
+const routing = async () => {
+    app.get('/', start);
+    app.get('/signout', signout);
+
+    app.get('/login', login);
+    app.post('/login', login);
+
+    app.get('/signup', signup);
+    app.post('/signup', signup);
+
+    app.get('/profile/:username', profile);
+    app.post('/profile/:username', profile);
+
+    app.get('/locations', locations);
+    app.post('/locations', locations);
+    app.get('/locations/:ID', location);
+    app.post('/locations/:ID', addClimb);
+    app.get('/locations/:ID/editLocation', updateLocation);
+    app.post('/locations/:ID/editLocation', updateLocation);
+    app.get('/locations/:ID/Climb/:ClimbID', climbPage);
+    app.post('/locations/:ID/Climb/:ClimbID', climbPage);
+
+    app.get('/locations/:ID/Climb/:ClimbID/LogAscent', logAscent);
+    app.post('/locations/:ID/Climb/:ClimbID/LogAscent', logAscent);
+
+    app.get('/locations/:ID/Climb/:ClimbID/LogAttempt', logAttempt);
+    app.post('/locations/:ID/Climb/:ClimbID/LogAttempt', logAttempt);
+
+    app.get('/locations/:ID/Climb/:ClimbID/EditClimb', editClimb);
+    app.post('/locations/:ID/Climb/:ClimbID/EditClimb', editClimb);
+
+    app.get('/locations/:ID/Climb/:ClimbID/Reasoning', reasoning);
+    app.post('/locations/:ID/Climb/:ClimbID/Reasoning', reasoning);
+
+    app.get('/addLocation', addLocation);
+    app.post('/addLocation', addLocation);
+
+    app.get('/climbers', climbers);
+    app.post('/climbers', climbers);
+
+    app.get('/Climbers/:ID', climberPage);
+    app.post('/Climbers/:ID', climberPage);
+
+    app.get('/Climbers/:ID/Reasoning', reasoning);
+    app.post('/Climbers/:ID/Reasoning', reasoning);
+
+    app.get('/addClimb', addClimb);
+    app.post('/addClimb', addClimb);
+    app.get('/locations/:ID/addClimb/', addClimb);
+    app.post('/locations/:ID/addClimb/', addClimb);
+}
+
+/**/
+/*
+aysnc start()
+
+NAME
+
+        async start() - Renders Homepage
+
+SYNOPSIS
+
+        async start(req, res);
+            req - Request object holding info on http request
+            res - response object holding info on our http response
+
+DESCRIPTION
+
+        This function will first read ascents from the database. We will
+        then read specific information about the ascent such as the connected
+        climb, climber, and location. We will update each ascent to hold extra
+        information in a temporary way (Ascent info is not updated in DB but
+        buil onto to be passed to pug). We then Render the home page with the 
+        read ascents.
+
+RETURNS
+
+        Returns nothing
+
+*/
+/**/
+const start = async (req, res) => {
+
+    let ascents = await db.read('Ascent', []);
+    //Subsitute some data to display home easily
+    for (let ascent of ascents) {
+        const climb = await db.read('Climb', [{ column: 'ID', value: ascent.ClimbID }]);
+        const climber = await db.read('User', [{ column: 'ID', value: ascent.ClimberID }]);
+        const loc = await db.read('Location', [{ column: 'ID', value: climb[0].LocationID }]);
+
+        //Error Check
+        if (climb.length < 1) {
+            console.log("Error in Home -> no Climb ID Found for Ascent: " + ascent.ID);
+            console.log("Will not display Ascent: " + ascent.ID);
+            continue;
+        }
+        if (climber.length < 1) {
+            console.log("Error in Home -> no Climber ID Found for Ascent: " + ascent.ID);
+            console.log("Will not display Ascent: " + ascent.ID);
+            continue;
+        }
+        if (loc.length < 1) {
+            console.log("Error in Home -> no Location ID Found for Ascent: " + ascent.ID);
+            console.log("Will not display Ascent: " + ascent.ID);
+            continue;
+        }
+
+        ascent.Grade = climb[0].Grade;
+        ascent.Location = loc[0].Name;
+        ascent.LocationID = loc[0].ID;
+        ascent.ClimbName = climb[0].Name;
+        ascent.ClimberID = climber[0].FirstName + " " + climber[0].LastName;
+
+        //Prepare to sort
+        const date = await readDate(ascent.Date);
+        ascent.dateNum = Number(date.year) * 10000 + Number(date.month) * 100 + Number(date.day); 
+    }
+
+    //sort
+    ascents.sort(function (a, b) {
+        return b.dateNum - a.dateNum;
+    })
+
+    res.render('home', { ascents: ascents }); 
+    return;
+
+}
+
 /**/
 /*
 aysnc startup()
@@ -128,7 +282,6 @@ const startup = async () => {
     ], 'id')    
 
     createAdmin();
-    createData();
     await ZGradeCalcs();
 }
 
@@ -174,7 +327,7 @@ const createAdmin = async () => {
                 { column: 'Username', value: "chossman" },
                 { column: 'Password', value: hash },
                 { column: 'Bio', value: "Chossy Bio Here" },
-                { column: 'Location', value: "Northeast USA" },
+                { column: 'Location', value: "US" },
                 { column: 'ProfilePicture', value: "File path here, No implemented yet" },
                 { column: 'Height', value: 179 },
                 { column: 'Graded', value: 9 },
@@ -191,97 +344,30 @@ const createAdmin = async () => {
     }
 } 
 
-//Will Initialize with a chunk of data
-const createData = async () => {
 
-}
-
+            //ACCOUNT FUNCTIONS
 /**/
 /*
-aysnc ZGradeCalcs()
+aysnc signup()
 
 NAME
 
-        async ZGradeCalcs() - Does ZGrade Calculations on startup.
+        async signup() - Handles Sign up functioanlity
 
 SYNOPSIS
 
-        async ZGradeCalcs();
-            no Params
-
-DESCRIPTION
-
-        This function will first read all of the climbs currently in the database,
-        and then it will call appropriate function to calculate a zgrade for it.
-        We will then update our databse with this information and then repeat
-        for climbers. Run into some bugs here but should be fixed. everything is 
-        in a try catch which is sometimes caught and then barely handled.
-
-RETURNS
-
-        Returns nothing
-
-*/
-/**/
-const ZGradeCalcs = async () => {
-    try {
-        let climbs = await db.read('Climb', []);
-        for (climb of climbs) {
-            const ZG = await calculateZGradeClimb(climb);
-            console.log("About to Update climb: " + climb.ID + " with ZGrade: " + ZG.ZGrade);
-            /*await db.update('Climb',
-                [{ column: 'GradeCalculated', value: ZG.ZGrade }],
-                [{ column: 'ID', value: climb.ID }]
-            );*/
-            console.log("Updated climb: " + climb.ID);
-        }
-    }
-    catch {
-        console.log("Error in Startup, issue calculating ZGrades for Climbs");
-    }
-
-    try {
-        let users = await db.read('User', []);
-        for (climber of users) {
-            const ZG = await calculateZGradeClimber(climber);
-            console.log("About to Update user: " + climber.ID + " with ZGrade: " + ZG.ZGrade);
-            await db.update('User',
-                [{ column: 'Graded', value: ZG.ZGrade }],
-                [{ column: 'ID', value: climber.ID }]
-            ); 
-            console.log("Updated user: " + climber.ID);
-        }
-    }
-    catch {
-        console.log("Error in Startup, issue calculating ZGrades for Climbers");
-    }
-
-}
-
-startup();
-
-/**/
-/*
-aysnc start()
-
-NAME
-
-        async start() - Renders Homepage
-
-SYNOPSIS
-
-        async start(req, res);
+        async signup(req, res);
             req - Request object holding info on http request
             res - response object holding info on our http response
 
 DESCRIPTION
 
-        This function will first read ascents from the database. We will
-        then read specific information about the ascent such as the connected
-        climb, climber, and location. We will update each ascent to hold extra
-        information in a temporary way (Ascent info is not updated in DB but
-        buil onto to be passed to pug). We then Render the home page with the 
-        read ascents.
+        This function will handle all sign up functionality. First it will
+        see if someone if trying to access the page, in which is will render 
+        the appropriate page. Then, if someone fills out our signup form, we
+        can then read their information from there and create a new user.
+        We also do some password checking and form data checking. Upon signing
+        up, we redirect to login page
 
 RETURNS
 
@@ -289,44 +375,64 @@ RETURNS
 
 */
 /**/
-const start = async (req, res) => {
+const signup = async (req, res) => {
 
-    let ascents = await db.read('Ascent', []);
-    //Subsitute some data to display home easily
-    for (let ascent of ascents) {
-        const climb = await db.read('Climb', [{ column: 'ID', value: ascent.ClimbID }]);
-        const climber = await db.read('User', [{ column: 'ID', value: ascent.ClimberID }]);
-        const loc = await db.read('Location', [{ column: 'ID', value: climb[0].LocationID }]);
-
-        //Error Check
-        if (climb.length < 1) {
-            console.log("Error in Home -> no Climb ID Found for Ascent: " + ascent.ID);
-            console.log("Will not display Ascent: " + ascent.ID);
-            continue;
-        }
-        if (climber.length < 1) {
-            console.log("Error in Home -> no Climber ID Found for Ascent: " + ascent.ID);
-            console.log("Will not display Ascent: " + ascent.ID);
-            continue;
-        }
-        if (loc.length < 1) {
-            console.log("Error in Home -> no Location ID Found for Ascent: " + ascent.ID);
-            console.log("Will not display Ascent: " + ascent.ID);
-            continue;
-        }
-
-        ascent.Grade = climb[0].Grade;
-        ascent.Location = loc[0].Name;
-        ascent.LocationID = loc[0].ID;
-        ascent.ClimbName = climb[0].Name;
-        ascent.ClimberID = climber[0].FirstName + " " + climber[0].LastName;
+    //Should show page on page load
+    if (req.body.firstName === undefined) {
+        res.render('signup', {countries: await countries()});
+        return;
     }
 
-    res.render('home', { ascents: ascents }); 
-    return;
+    //Make sure unique username
+    if (await user_lookup(req.body.username)) {
+        res.render('signup', { countries: await countries() , msg: "Username already taken"});
+        return;
+    }
 
+    //Make sure passwords match
+    if (req.body.password !== req.body.password2) {
+        res.render('signup', { countries: await countries(), msg: "Passwords do not Match" });
+        return;
+    }
+
+    //Make Sure Country Was Selected
+    if (req.body.country == "Select Country") {
+        res.render('signup', { countries: await countries(), msg: "Please Select a Country" });
+        return;
+    }
+
+    //hash password
+    const salt = bcrypt.genSaltSync(10);
+    const hash = bcrypt.hashSync(req.body.password, salt);
+
+    //Bio is not required so we will fill NULL value
+    let bio;
+    if (req.body.bio == undefined) {
+        bio = "N/A";
+    }
+    else {
+        bio = req.body.bio;
+    }
+
+    //Will run if form is submitted
+    await db.create('User',
+        [
+            { column: 'id', value: req.body.id },
+            { column: 'FirstName', value: req.body.firstName },
+            { column: 'LastName', value: req.body.lastName },
+            { column: 'Height', value: req.body.height },
+            { column: 'Location', value: req.body.country },
+            { column: 'Bio', value: bio },
+            { column: 'Username', value: req.body.username },
+            { column: 'Password', value: hash },
+            { column: 'Role', value: "Member" },
+        ]
+    );
+
+    console.log(req.body.firstName);
+
+    res.redirect('/login');
 }
-
 
 /**/
 /*
@@ -448,127 +554,6 @@ const user_lookup = async (username) => {
     else {
         return undefined;
     }
-}
-
-/**/
-/*
-aysnc login()
-
-NAME
-
-        async climbLookup() - Looks up a climb by its name
-
-SYNOPSIS
-
-        async climbLookup(climbName);
-            climbName - name of desired Climb 
-
-DESCRIPTION
-
-        This function will act as a cleaner line of code to 
-        look up a climb by its name
-
-RETURNS
-
-        Returns undefined if invalid name,
-        Returns the climb if valid.
-
-*/
-/**/
-const climbLookup = async (climbName) => {
-    const climbs = await db.read('Climb', [{ column: 'Name', value: climbName }]);
-    if (climbs.length > 0) return climbs[0];
-    else {
-        return undefined;
-    }
-}
-
-/**/
-/*
-aysnc signup()
-
-NAME
-
-        async signup() - Handles Sign up functioanlity
-
-SYNOPSIS
-
-        async signup(req, res);
-            req - Request object holding info on http request
-            res - response object holding info on our http response
-
-DESCRIPTION
-
-        This function will handle all sign up functionality. First it will
-        see if someone if trying to access the page, in which is will render 
-        the appropriate page. Then, if someone fills out our signup form, we
-        can then read their information from there and create a new user.
-        We also do some password checking and form data checking. Upon signing
-        up, we redirect to login page
-
-RETURNS
-
-        Returns nothing
-
-*/
-/**/
-const signup = async (req, res) => {
-
-    //Should show page on page load
-    if (req.body.firstName === undefined) {
-        res.render('signup', {countries: await countries()});
-        return;
-    }
-
-    //Make sure unique username
-    if (await user_lookup(req.body.username)) {
-        res.render('signup', { countries: await countries() , msg: "Username already taken"});
-        return;
-    }
-
-    //Make sure passwords match
-    if (req.body.password !== req.body.password2) {
-        res.render('signup', { countries: await countries(), msg: "Passwords do not Match" });
-        return;
-    }
-
-    //Make Sure Country Was Selected
-    if (req.body.country == "Select Country") {
-        res.render('signup', { countries: await countries(), msg: "Please Select a Country" });
-        return;
-    }
-
-    //hash password
-    const salt = bcrypt.genSaltSync(10);
-    const hash = bcrypt.hashSync(req.body.password, salt);
-
-    //Bio is not required so we will fill NULL value
-    let bio;
-    if (req.body.bio == undefined) {
-        bio = "N/A";
-    }
-    else {
-        bio = req.body.bio;
-    }
-
-    //Will run if form is submitted
-    await db.create('User',
-        [
-            { column: 'id', value: req.body.id },
-            { column: 'FirstName', value: req.body.firstName },
-            { column: 'LastName', value: req.body.lastName },
-            { column: 'Height', value: req.body.height },
-            { column: 'Location', value: req.body.country },
-            { column: 'Bio', value: bio },
-            { column: 'Username', value: req.body.username },
-            { column: 'Password', value: hash },
-            { column: 'Role', value: "Member" },
-        ]
-    );
-
-    console.log(req.body.firstName);
-
-    res.redirect('/login');
 }
 
 /**/
@@ -696,6 +681,9 @@ const profileUpdate = async (req, res) => {
 
 }
 
+
+
+            //ASCENT FUNCTIONALITY
 /**/
  /*
 aysnc logAscent()
@@ -908,18 +896,21 @@ const logAttempt = async (req, res) => {
         return;
     }
 
+    //Make sure users cannot log ascents in future
+    const today = await getToday();
+
     //Check if Climb is Valid
     const currClimb = await db.read('Climb', [{ column: 'ID', value: req.params.ClimbID }]);
     if (currClimb === undefined) {
         //Could pass more data back here to user doesnt have to retype all data
-        res.render('logAttempt', { climb: currClimb[0], msg: "Climb not recognized" });
+        res.render('logAttempt', { climb: currClimb[0], today: today, msg: "Climb not recognized" });
         return;
     }
 
     //On load up
     if (req.body.numAttempts === undefined) {
         console.log("Rendering Log Ascent");
-        res.render('logAttempt', { climb: currClimb[0] });
+        res.render('logAttempt', { climb: currClimb[0], today: today });
         return;
     }
 
@@ -929,7 +920,7 @@ const logAttempt = async (req, res) => {
         if (ascent.ClimberID == req.session.user.ID) {
             //Invalid Attempt Log
             console.log("User:  " + req.session.user.ID + "  cannot log an attempt for a climb they have an ascent logged for...");
-            res.render('logAttempt', { climb: currClimb[0], msg: "Attempt of: " + currClimb[0].Name + " Failed: Previous ascent found" });
+            res.render('logAttempt', { climb: currClimb[0], today: today, msg: "Attempt of: " + currClimb[0].Name + " Failed: Previous ascent found" });
             return;
 
         }
@@ -950,319 +941,8 @@ const logAttempt = async (req, res) => {
 
     //Call some async functions to update climb info
 
-    res.render('logAttempt', { climb: currClimb[0], msg: "Attempt of: " + currClimb[0].Name + " was added successfully" });
+    res.render('logAttempt', { climb: currClimb[0], today: today, msg: "Attempt of: " + currClimb[0].Name + " was added successfully" });
     return;
-}
-
-/**/
-/*
-aysnc addClimb()
-
-NAME
-
-        async addClimb() - Adds a Brand New Climb to Database
-
-SYNOPSIS
-
-        async addClimb(req, res);
-            req - Request object holding info on http request
-            res - response object holding info on our http response
-
-DESCRIPTION
-
-        This function will handle the add Climb page. First We must have
-        a location ID in our URL to properly work so we check for that. 
-        Then, we collect our location info from database and pass that to
-        our page if we are handling a GET. Else, we are handling a POST and
-        We will add a climb to the Database.
-
-RETURNS
-
-        Returns nothing
-
-*/
-/**/
-const addClimb = async (req, res) => {
-
-    //Should show page on page load
-    if (req.body.climbName === undefined) {
-        if (req.params.ID === undefined) {
-            res.render('addClimb', {});
-            return;
-        } 
-        //If coming from locationPage
-
-        else {
-            const location = await db.read('Location', [{ column: 'ID', value: req.params.ID }]);
-            res.render('addClimb', {location: location[0] });
-            return;
-        }
-
-    }
-
-    //Check for Duplicate Climbs
-
-
-    //Add climb data to database
-    await db.create('Climb',
-        [
-            { column: 'ID', value: req.body.id },
-            { column: 'Name', value: req.body.climbName },
-            { column: 'LocationID', value: req.body.locationID },
-            { column: 'Grade', value: req.body.grade },
-            { column: 'HeightAdv', value: 0 },
-            { column: 'Gimic', value: 0 },
-            { column: 'Quality', value: 0 },
-            { column: 'GradeCalculated', value: 0 },
-        ]
-    );
-
-    res.redirect('/locations/'+req.params.ID);
-    return;
-}
-
-/**/
-/*
-aysnc addLocation()
-
-NAME
-
-        async addLocation() - Adds a Brand New Location to Database
-
-SYNOPSIS
-
-        async addLocation(req, res);
-            req - Request object holding info on http request
-            res - response object holding info on our http response
-
-DESCRIPTION
-
-        This function will handle the add Location page. First We must collect 
-        the country information to pass along. Then for GET req, we load the
-        page passing the country information through. For POST req, we first
-        check for a duplicate name in the same Country. We will not allow 
-        duplicates. Otherwise we add our location to the database based off
-        the post req data and redirect back to the empty page with a success
-        message
-
-RETURNS
-
-        Returns nothing
-
-*/
-/**/
-const addLocation = async (req, res) => {
-
-    //Initialize countries
-    const c = await countries();
-
-    //On Page Load
-    if (req.body.locationName === undefined) {
-        res.render('addLocation', { countries: c });
-        return;
-    }
-
-    //Check for duplicate
-    try {
-        const loc = await db.read('Location', [{ column: 'Name', value: req.body.locationName }]);
-
-        if (loc) {
-            if (loc[0].Country === req.body.country) {
-                res.render('addLocation', { countries: c, msg: 'Failed to add location, already exists' });
-                return;
-            }
-        }
-    }
-    catch {
-        console.log("Error in Add Location");
-    }
-
-    //Add climb data to database
-    await db.create('Location',
-        [
-            { column: 'ID', value: req.body.id },
-            { column: 'Name', value: req.body.locationName },
-            { column: 'Country', value: req.body.country },
-            { column: 'Notes', value: req.body.notes },
-        ]
-    );
-
-    res.render('addLocation', { countries: c, msg: "Location: " + req.body.locationName + " was added successfully" });
-    return;
-}
-
-/**/
-/*
-aysnc updateClimb()
-
-NAME
-
-        async updateClimb() - Updates a climb with Number of Ascents and RecAscentID
-
-SYNOPSIS
-
-        async updateClimb(climbID, ascentID);
-            climbID - holds the climbID of the climb we want to update
-            ascentID - holds the ascent ID of the ascent just logged
-                (Goal with ascent ID is to just compare current info
-                to most recent ascent logged to save computation)
-
-DESCRIPTION
-
-        This function will first do some Error Checking making sure IDs are
-        valid. Then we will update the NumAscents on the climb. We then do
-        some comparisions to retrieve the most recAscent information and then
-        we update the database. We have lots of try catches to find the most
-        recent ascent but the code works and catches errors that prevent us
-        from crashing!
-
-RETURNS
-
-        Returns nothing
-
-*/
-/**/
-const updateClimb = async (climbID, ascentID) => {
-
-    console.log("Update Climb func -> climbID: " + climbID + "      AscentID: " + ascentID);
-    const ascents = await db.read('Ascent', [{ column: 'ClimbID', value: climbID }]);
-    const climb = await db.read('Climb', [{ column: 'ID', value: climbID }]);
-
-    //Error Check
-    if (ascents.length < 1) {
-        console.log("Update Climb: " + climbID + " Failed, unable to read ascents");
-        return;
-    }
-    if (climb.length < 1) {
-        console.log("Update Climb: " + climbID + " Failed, unable to read climb");
-        return;
-    }
-
-    console.log("Ascents.length: "+ ascents.length);
-
-    //Updates number of ascents on a climb
-    await db.update('Climb',
-        [{ column: 'NumAscents', value: ascents.length }],
-        [{ column: 'ID', value: climbID }]
-    );
-
-    //Finds the most recent ascent and updates it
-    //Check if only a single ascent
-    if (Number(ascents.length) === 1) {
-        await db.update('Climb',
-            [{ column: 'RecAscentID', value: ascents[0].ID }],
-            [{ column: 'ID', value: climbID }]
-        );
-
-        console.log("Climb: " + climb[0].Name + " is updated properly");
-        return;
-    }
-
-    //Error Check
-    console.log("RecAsc: " + climb[0].RecAscentID);
-    if (ascents.length > 1 && (climb[0].RecAscentID === undefined || climb[0].RecAscentID === null)) {
-        console.log("Error in Data -> invalid RecAscent State");
-        //Add function to find the most recent Ascent
-        console.log("Function to fix error will be added, for now, logged ascent will be the data");
-        const currAscent = await db.read('Ascent', [{ column: 'ID', value: ascentID }]);
-        await db.update('Climb',
-            [{ column: 'RecAscentID', value: currAscent[0].ID }],
-            [{ column: 'ID', value: climbID }]
-        );
-        return;
-    }
-
-    let currAscent;
-    let currAscentDate;
-    try {
-        currAscent = await db.read('Ascent', [{ column: 'ID', value: ascentID }]);
-        currAscentDate = await readDate(currAscent[0].Date);
-    }
-    catch {
-        console.log("Error Reading the current recent ascent of climb: " + climb[0].ID);
-        return;
-    }
-
-    let recAscent;
-    let recAscentDate;
-    try {
-        recAscent = await db.read('Ascent', [{ column: 'ID', value: climb[0].RecAscentID }]);
-        recAscentDate = await readDate(recAscent[0].Date);
-    }
-    catch {
-        console.log("Error Reading the most recent ascent of climb: " + climb[0].ID + "   ->    Ascent was probably overwritten");
-        recAscentDate = "0001-01-01";
-    }
-
-    console.log("currAD: " + currAscentDate.month + "/" + currAscentDate.day + "/" + currAscentDate.year);
-    console.log("recAD: " + recAscentDate.month + "/" + recAscentDate.day + "/" + recAscentDate.year);
-
-    //Compares most recent input with current most recent
-    //updated w seperate function have to test
-    if (await findRecentAscent(currAscentDate, recAscentDate)) {
-        console.log("updating climb's recAscentID");
-        await db.update('Climb',
-            [{ column: 'RecAscentID', value: ascentID }],
-            [{ column: 'ID', value: climbID }]
-        );
-    }
-
-    console.log("Climb: " + climb[0].Name + " is updated properly");
-    return;
-}
-
-/**/
-/*
-aysnc fixClimb()
-
-NAME
-
-        async fixClimb() - This function will only be called after deleting ascents
-
-SYNOPSIS
-
-        async fixClimb(climbID);
-            climbID - holds the climbID of the climb we want to fix
-
-
-DESCRIPTION
-
-        This function will only be called after deleting ascents.
-        it will make sure NumAscents and RecAscentID are in check. 
-        First fixing NumAscents is easy, and then we go through 
-        and compare recent ascent date to find the most recent
-        ascent. Finally we update the database. This is also
-        checked again after this function is called.
-
-RETURNS
-
-        Returns nothing
-
-*/
-/**/
-const fixClimb = async (climbID) => {
-    //Num Ascents will be fixed in update climb
-    //We only need to provide a valid ascent ID to our climb here
-    //This avoids a climb holding an invalid ascentID
-
-    const currClimb = await db.read('Climb', [{ column: 'ID', value: climbID }]);    
-    const ascents = await db.read('Ascent', [{ column: 'ClimbID', value: climbID }]);
-
-    let recAscentDate = await readDate("0001-01-01")
-    let recAscentID = -1;
-    for (a of ascents) {
-        let currDate = await readDate(a.Date);
-        if ( await findRecentAscent(currDate, recAscentDate) ) {
-            recAscentDate = currDate;
-            recAscentID = a.ID;
-        }
-    }
-
-    await db.update('Climb',
-        [{ column: 'RecAscentID', value: recAscentID }],
-        [{ column: 'ID', value: climbID }]
-    );
-
 }
 
 /**/
@@ -1310,93 +990,9 @@ const findRecentAscent = async (a, b) => {
     return false;
 }
 
-/**/
-/*
-aysnc updateLocation()
 
-NAME
 
-        async updateLocation() - Will update a location
-
-SYNOPSIS
-
-        async updateLocation(req, res);
-            req - Request object holding info on http request
-            res - response object holding info on our http response
-
-DESCRIPTION
-
-        This function will handle our update location page. Here we just
-        keep track of the notes for each location. Here people can put
-        information on things like guidebooks, directions, and parking.
-
-RETURNS
-
-        Returns nothing
-
-*/
-/**/
-const updateLocation = async (req, res) => {
-    let location = await db.read('Location', [{ column: 'ID', value: req.params.ID }]);
-    if (location.length != 1) {
-        console.log("Error Reading Current Location in UpdateLocation, Redirecting Home");
-        res.redirect('/');
-        return;
-    }
-
-    if (req.method == "POST") {
-        //We are trying to update the notes
-
-        //take note of the user
-        const notes = req.body.notes;
-
-        try {
-            await db.update('Location',
-                [{ column: 'Notes', value: notes }],
-                [{ column: 'ID', value: req.params.ID }]
-            );
-            await db.update('Location',
-                [{ column: 'LastEditor', value: req.session.user.ID }],
-                [{ column: 'ID', value: req.params.ID }]
-            );
-            const lastEditor = await db.read('User', [{ column: 'ID', value: location[0].LastEditor }]);
-            //const lastEditor = { FirstName: req.session.user.FirstName, LastName: req.session.user.LastName };
-            location = await db.read('Location', [{ column: 'ID', value: req.params.ID }]);
-            res.render('updateLocation',
-                {
-                    location: location[0],
-                    notes: location[0].Notes,
-                    lastEditor: lastEditor[0],
-                    msg: "Location notes updated successfully"
-                });
-            return;
-        }
-        catch {
-            console.log("Error in Update Location -> might render incorrectly");
-            const lastEditor = await db.read('User', [{ column: 'ID', value: location[0].LastEditor }]);
-            res.render('updateLocation',
-                {
-                    location: location[0],
-                    notes: location[0].Notes,
-                    lastEditor: lastEditor[0],
-                    msg: "Location notes update failed, reason unknown"
-                });
-            return;
-        }
-        
-    }
-
-    const lastEditor = await db.read('User', [{ column: 'ID', value: location[0].LastEditor }]);
-    res.render('updateLocation',
-        {
-            location: location[0],
-            notes: location[0].Notes,
-            lastEditor: lastEditor[0],
-            msg: "You will (hopefully) see a success message here after updating!"
-        });
-    return;
-}
-
+            //DATE FUNCTIONS
 /**/
 /*
 aysnc getToday()
@@ -1465,6 +1061,76 @@ const readDate = async (date) => {
     const day = date.slice(8, 10);
     //console.log("Year: " + year + " Month: " + month + " Day: " + day);
     return { year: year, month: month, day: day };
+}
+
+
+
+            ///CLIMB FUNCTIONS
+/**/
+/*
+aysnc addClimb()
+
+NAME
+
+        async addClimb() - Adds a Brand New Climb to Database
+
+SYNOPSIS
+
+        async addClimb(req, res);
+            req - Request object holding info on http request
+            res - response object holding info on our http response
+
+DESCRIPTION
+
+        This function will handle the add Climb page. First We must have
+        a location ID in our URL to properly work so we check for that. 
+        Then, we collect our location info from database and pass that to
+        our page if we are handling a GET. Else, we are handling a POST and
+        We will add a climb to the Database.
+
+RETURNS
+
+        Returns nothing
+
+*/
+/**/
+const addClimb = async (req, res) => {
+
+    //Should show page on page load
+    if (req.body.climbName === undefined) {
+        if (req.params.ID === undefined) {
+            res.render('addClimb', {});
+            return;
+        } 
+        //If coming from locationPage
+
+        else {
+            const location = await db.read('Location', [{ column: 'ID', value: req.params.ID }]);
+            res.render('addClimb', {location: location[0] });
+            return;
+        }
+
+    }
+
+    //Check for Duplicate Climbs
+
+
+    //Add climb data to database
+    await db.create('Climb',
+        [
+            { column: 'ID', value: req.body.id },
+            { column: 'Name', value: req.body.climbName },
+            { column: 'LocationID', value: req.body.locationID },
+            { column: 'Grade', value: req.body.grade },
+            { column: 'HeightAdv', value: 0 },
+            { column: 'Gimic', value: 0 },
+            { column: 'Quality', value: 0 },
+            { column: 'GradeCalculated', value: 0 },
+        ]
+    );
+
+    res.redirect('/locations/'+req.params.ID);
+    return;
 }
 
 /**/
@@ -1612,6 +1278,270 @@ const editClimb = async (req, res) => {
 
 /**/
 /*
+aysnc updateQualityClimb()
+
+NAME
+
+        async updateQualityClimb() - Updates a climb's Quality in the Database
+
+SYNOPSIS
+
+        async updateQualityClimb(climb);
+            climb - climb to be updated with quality
+
+DESCRIPTION
+
+        This function will read a climb, and collect enough info
+        on the ascents and attempts of the climb to average out
+        the quality given and then assign that quality to that
+        climb in the database.
+
+RETURNS
+
+        Returns nothing
+
+*/
+/**/
+const updateQualityClimb = async (climb) => {
+    //Update Quality for Each Climb
+    const ascents = await db.read('Ascent', [{ column: 'ClimbID', value: climb.ID }]);
+    if (ascents.length > 0) {
+        let quality = 0;
+
+        const attempts = await db.read('Attempt', [{ column: 'ClimbID', value: climb.ID }]);
+        if (attempts.length > 0) {
+            for (attempt of attempts) {
+                quality += attempt.Quality;
+            }
+        }
+        else {
+            attempts.length = 0;
+        }
+
+        
+        for (ascent of ascents) {
+            quality += ascent.Quality;
+        }
+        climb.Quality = (quality / (ascents.length + attempts.length));
+        await db.update('Climb',
+            [{ column: 'Quality', value: climb.Quality }],
+            [{ column: 'ID', value: climb.ID }]
+        );
+    }
+}
+
+/**/
+/*
+aysnc fixClimb()
+
+NAME
+
+        async fixClimb() - This function will only be called after deleting ascents
+
+SYNOPSIS
+
+        async fixClimb(climbID);
+            climbID - holds the climbID of the climb we want to fix
+
+
+DESCRIPTION
+
+        This function will only be called after deleting ascents.
+        it will make sure NumAscents and RecAscentID are in check. 
+        First fixing NumAscents is easy, and then we go through 
+        and compare recent ascent date to find the most recent
+        ascent. Finally we update the database. This is also
+        checked again after this function is called.
+
+RETURNS
+
+        Returns nothing
+
+*/
+/**/
+const fixClimb = async (climbID) => {
+    //Num Ascents will be fixed in update climb
+    //We only need to provide a valid ascent ID to our climb here
+    //This avoids a climb holding an invalid ascentID
+
+    const currClimb = await db.read('Climb', [{ column: 'ID', value: climbID }]);    
+    const ascents = await db.read('Ascent', [{ column: 'ClimbID', value: climbID }]);
+
+    let recAscentDate = await readDate("0001-01-01")
+    let recAscentID = -1;
+    for (a of ascents) {
+        let currDate = await readDate(a.Date);
+        if ( await findRecentAscent(currDate, recAscentDate) ) {
+            recAscentDate = currDate;
+            recAscentID = a.ID;
+        }
+    }
+
+    await db.update('Climb',
+        [{ column: 'RecAscentID', value: recAscentID }],
+        [{ column: 'ID', value: climbID }]
+    );
+
+}
+
+/**/
+/*
+aysnc updateClimb()
+
+NAME
+
+        async updateClimb() - Updates a climb with Number of Ascents and RecAscentID
+
+SYNOPSIS
+
+        async updateClimb(climbID, ascentID);
+            climbID - holds the climbID of the climb we want to update
+            ascentID - holds the ascent ID of the ascent just logged
+                (Goal with ascent ID is to just compare current info
+                to most recent ascent logged to save computation)
+
+DESCRIPTION
+
+        This function will first do some Error Checking making sure IDs are
+        valid. Then we will update the NumAscents on the climb. We then do
+        some comparisions to retrieve the most recAscent information and then
+        we update the database. We have lots of try catches to find the most
+        recent ascent but the code works and catches errors that prevent us
+        from crashing!
+
+RETURNS
+
+        Returns nothing
+
+*/
+/**/
+const updateClimb = async (climbID, ascentID) => {
+
+    console.log("Update Climb func -> climbID: " + climbID + "      AscentID: " + ascentID);
+    const ascents = await db.read('Ascent', [{ column: 'ClimbID', value: climbID }]);
+    const climb = await db.read('Climb', [{ column: 'ID', value: climbID }]);
+
+    //Error Check
+    if (ascents.length < 1) {
+        console.log("Update Climb: " + climbID + " Failed, unable to read ascents");
+        return;
+    }
+    if (climb.length < 1) {
+        console.log("Update Climb: " + climbID + " Failed, unable to read climb");
+        return;
+    }
+
+    console.log("Ascents.length: "+ ascents.length);
+
+    //Updates number of ascents on a climb
+    await db.update('Climb',
+        [{ column: 'NumAscents', value: ascents.length }],
+        [{ column: 'ID', value: climbID }]
+    );
+
+    //Finds the most recent ascent and updates it
+    //Check if only a single ascent
+    if (Number(ascents.length) === 1) {
+        await db.update('Climb',
+            [{ column: 'RecAscentID', value: ascents[0].ID }],
+            [{ column: 'ID', value: climbID }]
+        );
+
+        console.log("Climb: " + climb[0].Name + " is updated properly");
+        return;
+    }
+
+    //Error Check
+    console.log("RecAsc: " + climb[0].RecAscentID);
+    if (ascents.length > 1 && (climb[0].RecAscentID === undefined || climb[0].RecAscentID === null)) {
+        console.log("Error in Data -> invalid RecAscent State");
+        //Add function to find the most recent Ascent
+        console.log("Function to fix error will be added, for now, logged ascent will be the data");
+        const currAscent = await db.read('Ascent', [{ column: 'ID', value: ascentID }]);
+        await db.update('Climb',
+            [{ column: 'RecAscentID', value: currAscent[0].ID }],
+            [{ column: 'ID', value: climbID }]
+        );
+        return;
+    }
+
+    let currAscent;
+    let currAscentDate;
+    try {
+        currAscent = await db.read('Ascent', [{ column: 'ID', value: ascentID }]);
+        currAscentDate = await readDate(currAscent[0].Date);
+    }
+    catch {
+        console.log("Error Reading the current recent ascent of climb: " + climb[0].ID);
+        return;
+    }
+
+    let recAscent;
+    let recAscentDate;
+    try {
+        recAscent = await db.read('Ascent', [{ column: 'ID', value: climb[0].RecAscentID }]);
+        recAscentDate = await readDate(recAscent[0].Date);
+    }
+    catch {
+        console.log("Error Reading the most recent ascent of climb: " + climb[0].ID + "   ->    Ascent was probably overwritten");
+        recAscentDate = "0001-01-01";
+    }
+
+    console.log("currAD: " + currAscentDate.month + "/" + currAscentDate.day + "/" + currAscentDate.year);
+    console.log("recAD: " + recAscentDate.month + "/" + recAscentDate.day + "/" + recAscentDate.year);
+
+    //Compares most recent input with current most recent
+    //updated w seperate function have to test
+    if (await findRecentAscent(currAscentDate, recAscentDate)) {
+        console.log("updating climb's recAscentID");
+        await db.update('Climb',
+            [{ column: 'RecAscentID', value: ascentID }],
+            [{ column: 'ID', value: climbID }]
+        );
+    }
+
+    console.log("Climb: " + climb[0].Name + " is updated properly");
+    return;
+}
+
+/**/
+/*
+aysnc login()
+
+NAME
+
+        async climbLookup() - Looks up a climb by its name
+
+SYNOPSIS
+
+        async climbLookup(climbName);
+            climbName - name of desired Climb 
+
+DESCRIPTION
+
+        This function will act as a cleaner line of code to 
+        look up a climb by its name
+
+RETURNS
+
+        Returns undefined if invalid name,
+        Returns the climb if valid.
+
+*/
+/**/
+const climbLookup = async (climbName) => {
+    const climbs = await db.read('Climb', [{ column: 'Name', value: climbName }]);
+    if (climbs.length > 0) return climbs[0];
+    else {
+        return undefined;
+    }
+}
+
+
+
+            //CLIMBER FUNCTIONS
+/**/
+/*
 aysnc climbers()
 
 NAME
@@ -1754,25 +1684,28 @@ const climberPage = async (req, res) => {
     return;
 }
 
+
+            //ZGRADE FUNCTIONS
 /**/
 /*
-aysnc updateQualityClimb()
+aysnc ZGradeCalcs()
 
 NAME
 
-        async updateQualityClimb() - Updates a climb's Quality in the Database
+        async ZGradeCalcs() - Does ZGrade Calculations on startup.
 
 SYNOPSIS
 
-        async updateQualityClimb(climb);
-            climb - climb to be updated with quality
+        async ZGradeCalcs();
+            no Params
 
 DESCRIPTION
 
-        This function will read a climb, and collect enough info
-        on the ascents and attempts of the climb to average out
-        the quality given and then assign that quality to that
-        climb in the database.
+        This function will first read all of the climbs currently in the database,
+        and then it will call appropriate function to calculate a zgrade for it.
+        We will then update our databse with this information and then repeat
+        for climbers. Run into some bugs here but should be fixed. everything is 
+        in a try catch which is sometimes caught and then barely handled.
 
 RETURNS
 
@@ -1780,197 +1713,39 @@ RETURNS
 
 */
 /**/
-const updateQualityClimb = async (climb) => {
-    //Update Quality for Each Climb
-    const ascents = await db.read('Ascent', [{ column: 'ClimbID', value: climb.ID }]);
-    if (ascents.length > 0) {
-        let quality = 0;
-
-        const attempts = await db.read('Attempt', [{ column: 'ClimbID', value: climb.ID }]);
-        if (attempts.length > 0) {
-            for (attempt of attempts) {
-                quality += attempt.Quality;
-            }
-        }
-        else {
-            attempts.length = 0;
-        }
-
-        
-        for (ascent of ascents) {
-            quality += ascent.Quality;
-        }
-        climb.Quality = (quality / (ascents.length + attempts.length));
-        await db.update('Climb',
-            [{ column: 'Quality', value: climb.Quality }],
-            [{ column: 'ID', value: climb.ID }]
-        );
-    }
-}
-
-/**/
-/*
-aysnc locations()
-
-NAME
-
-        async locations() - Runs to Display all locations in Database
-
-SYNOPSIS
-
-        async locations(req, res);
-            req - Request object holding info on http request
-            res - response object holding info on our http response
-
-DESCRIPTION
-
-        This function will handle the add locations page. Here, we display
-        all of the locations in our database along with some stats about 
-        the location and the climbs there. We have to read in all the 
-        climbs of each and then all of the ascents of each of the climbs
-        to collect things like average quality, average grade, and best 
-        climb info.
-
-Note: This can probably be broken down into seperate functions
-
-RETURNS
-
-        Returns nothing
-
-*/
-/**/
-const locations = async (req, res) => {
-    let locs = await db.read('Location', []);
-
-    //Update info for location
-    for (loc of locs) {
-        const climbs = await db.read('Climb', [{ column: 'LocationID', value: loc.ID }]);
-        await db.update('Location',
-            [{ column: 'NumClimbs', value: climbs.length }],
-            [{ column: 'ID', value: loc.ID }]
-        );
-        loc.NumClimbs = climbs.length;
-
-        if (climbs.length > 0) {
-
-            //Variables for Avergaging
-            let AvgGrade = 0;
-            let AvgQuality = 0;
-            let MaxQuality = 0
-            let BestID = -1;
-            let BestGrade = 0;
-            let ascended = climbs.length;
-
-            //Loop through climbs of location
-            for (climb of climbs) {
-                await updateQualityClimb(climb);
-                AvgGrade += climb.Grade;
-                if (climb.Quality != 0) {
-                    AvgQuality += climb.Quality;
-                }
-                if (MaxQuality < climb.Quality) {
-                    MaxQuality = climb.Quality;
-                    BestID = climb.ID;
-                    BestGrade = climb.Grade;
-                    loc.BestClimb = climb.Name;
-                    loc.BestGrade = climb.Grade;
-                }
-                if (climb.NumAscents < 1 || climb.NumAscents == null) {
-                    ascended -= 1;
-                }
-            }
-
-            //Update AvgGrade
-            //Round to 100th while calulating average
-            AvgGrade = Math.round(AvgGrade / climbs.length * 100) / 100;
-            
-            await db.update('Location',
-                [{ column: 'AvgGrade', value: AvgGrade }],
-                [{ column: 'ID', value: loc.ID }]
-            );
-            loc.AvgGrade = AvgGrade;
-
-            //Update AvgQuality
-            //Round to 100th while calulating average
-            AvgQuality = Math.round(AvgQuality / ascended * 100) / 100;
-            await db.update('Location',
-                [{ column: 'AvgQuality', value: AvgQuality }],
-                [{ column: 'ID', value: loc.ID }]
-            );
-            loc.AvgQuality = AvgQuality;
-
-            //Update Best Climb ID
-            if (BestID == -1) {
-                console.log("No Valid Best Climb ID for Location: " + loc.Name);
-                loc.BestClimb = "None";
-                loc.BestGrade = "N/a";
-            }
-            else {
-                await db.update('Location',
-                    [{ column: 'BestClimbID', value: BestID }],
-                    [{ column: 'ID', value: loc.ID }]
-                );
-            }
-
+const ZGradeCalcs = async () => {
+    try {
+        let climbs = await db.read('Climb', []);
+        for (climb of climbs) {
+            const ZG = await calculateZGradeClimb(climb);
+            console.log("About to Update climb: " + climb.ID + " with ZGrade: " + ZG.ZGrade);
+            /*await db.update('Climb',
+                [{ column: 'GradeCalculated', value: ZG.ZGrade }],
+                [{ column: 'ID', value: climb.ID }]
+            );*/
+            console.log("Updated climb: " + climb.ID);
         }
     }
-
-    res.render('locations', { locations: locs})
-    return;
-}
-
-/**/
-/*
-aysnc location()
-
-NAME
-
-        async location() - Runs to Display info on a specific location
-
-SYNOPSIS
-
-        async location(req, res);
-            req - Request object holding info on http request
-            res - response object holding info on our http response
-
-DESCRIPTION
-
-        This function will handle the add location page. Here users can
-        view all of the climbs at a particular location. In this function,
-        we fetch all of the climbs at this location, and then do a double
-        check on the most recent ascent of these climbs, and then we 
-        render our page.
-
-Note: This can probably be broken down into seperate functions
-
-RETURNS
-
-        Returns nothing
-
-*/
-/**/
-const location = async (req, res) => {
-    const currLocation = await db.read('Location', [{ column: 'ID', value: req.params.ID }]);
-    const climbs = await db.read('Climb', [{ column: 'LocationID', value: currLocation[0].ID }]);
-    console.log("# of climbs read for current location: " + climbs.length);
-
-    //To show Rec Ascent Accurately
-    for (climb of climbs) {
-
-        //Update RecAscent
-        const recAscent = await db.read('Ascent', [{ column: 'ID', value: climb.RecAscentID }]);
-        //Error Check
-        if (recAscent.length < 1) {
-            console.log("Error displaying rec Ascent Date, no Rec Ascent");
-            continue;
-        }
-        const recAscentDate = await readDate(recAscent[0].Date);
-        climb.RecAscentID = recAscentDate.year + "-" + recAscentDate.month + "-" + recAscentDate.day;
+    catch {
+        console.log("Error in Startup, issue calculating ZGrades for Climbs");
     }
-    
 
-    res.render('location', { climbs: climbs, location: currLocation[0] });
-    return;
+    try {
+        let users = await db.read('User', []);
+        for (climber of users) {
+            const ZG = await calculateZGradeClimber(climber);
+            console.log("About to Update user: " + climber.ID + " with ZGrade: " + ZG.ZGrade);
+            await db.update('User',
+                [{ column: 'Graded', value: ZG.ZGrade }],
+                [{ column: 'ID', value: climber.ID }]
+            ); 
+            console.log("Updated user: " + climber.ID);
+        }
+    }
+    catch {
+        console.log("Error in Startup, issue calculating ZGrades for Climbers");
+    }
+
 }
 
 /**/
@@ -2376,6 +2151,330 @@ const reasoning = async (req, res) => {
     }
 }
 
+
+            //LOCATION FUNCTIONS
+/**/
+/*
+aysnc addLocation()
+
+NAME
+
+        async addLocation() - Adds a Brand New Location to Database
+
+SYNOPSIS
+
+        async addLocation(req, res);
+            req - Request object holding info on http request
+            res - response object holding info on our http response
+
+DESCRIPTION
+
+        This function will handle the add Location page. First We must collect 
+        the country information to pass along. Then for GET req, we load the
+        page passing the country information through. For POST req, we first
+        check for a duplicate name in the same Country. We will not allow 
+        duplicates. Otherwise we add our location to the database based off
+        the post req data and redirect back to the empty page with a success
+        message
+
+RETURNS
+
+        Returns nothing
+
+*/
+/**/
+const addLocation = async (req, res) => {
+
+    //Initialize countries
+    const c = await countries();
+
+    //On Page Load
+    if (req.body.locationName === undefined) {
+        res.render('addLocation', { countries: c });
+        return;
+    }
+
+    //Check for duplicate
+    try {
+        const loc = await db.read('Location', [{ column: 'Name', value: req.body.locationName }]);
+
+        if (loc) {
+            if (loc[0].Country === req.body.country) {
+                res.render('addLocation', { countries: c, msg: 'Failed to add location, already exists' });
+                return;
+            }
+        }
+    }
+    catch {
+        console.log("Error in Add Location");
+    }
+
+    //Add climb data to database
+    await db.create('Location',
+        [
+            { column: 'ID', value: req.body.id },
+            { column: 'Name', value: req.body.locationName },
+            { column: 'Country', value: req.body.country },
+            { column: 'Notes', value: req.body.notes },
+        ]
+    );
+
+    res.render('addLocation', { countries: c, msg: "Location: " + req.body.locationName + " was added successfully" });
+    return;
+}
+
+/**/
+/*
+aysnc locations()
+
+NAME
+
+        async locations() - Runs to Display all locations in Database
+
+SYNOPSIS
+
+        async locations(req, res);
+            req - Request object holding info on http request
+            res - response object holding info on our http response
+
+DESCRIPTION
+
+        This function will handle the add locations page. Here, we display
+        all of the locations in our database along with some stats about 
+        the location and the climbs there. We have to read in all the 
+        climbs of each and then all of the ascents of each of the climbs
+        to collect things like average quality, average grade, and best 
+        climb info.
+
+Note: This can probably be broken down into seperate functions
+
+RETURNS
+
+        Returns nothing
+
+*/
+/**/
+const locations = async (req, res) => {
+    let locs = await db.read('Location', []);
+
+    //Update info for location
+    for (loc of locs) {
+        const climbs = await db.read('Climb', [{ column: 'LocationID', value: loc.ID }]);
+        await db.update('Location',
+            [{ column: 'NumClimbs', value: climbs.length }],
+            [{ column: 'ID', value: loc.ID }]
+        );
+        loc.NumClimbs = climbs.length;
+
+        if (climbs.length > 0) {
+
+            //Variables for Avergaging
+            let AvgGrade = 0;
+            let AvgQuality = 0;
+            let MaxQuality = 0
+            let BestID = -1;
+            let BestGrade = 0;
+            let ascended = climbs.length;
+
+            //Loop through climbs of location
+            for (climb of climbs) {
+                await updateQualityClimb(climb);
+                AvgGrade += climb.Grade;
+                if (climb.Quality != 0) {
+                    AvgQuality += climb.Quality;
+                }
+                if (MaxQuality < climb.Quality) {
+                    MaxQuality = climb.Quality;
+                    BestID = climb.ID;
+                    BestGrade = climb.Grade;
+                    loc.BestClimb = climb.Name;
+                    loc.BestGrade = climb.Grade;
+                }
+                if (climb.NumAscents < 1 || climb.NumAscents == null) {
+                    ascended -= 1;
+                }
+            }
+
+            //Update AvgGrade
+            //Round to 100th while calulating average
+            AvgGrade = Math.round(AvgGrade / climbs.length * 100) / 100;
+            
+            await db.update('Location',
+                [{ column: 'AvgGrade', value: AvgGrade }],
+                [{ column: 'ID', value: loc.ID }]
+            );
+            loc.AvgGrade = AvgGrade;
+
+            //Update AvgQuality
+            //Round to 100th while calulating average
+            AvgQuality = Math.round(AvgQuality / ascended * 100) / 100;
+            await db.update('Location',
+                [{ column: 'AvgQuality', value: AvgQuality }],
+                [{ column: 'ID', value: loc.ID }]
+            );
+            loc.AvgQuality = AvgQuality;
+
+            //Update Best Climb ID
+            if (BestID == -1) {
+                console.log("No Valid Best Climb ID for Location: " + loc.Name);
+                loc.BestClimb = "None";
+                loc.BestGrade = "N/a";
+            }
+            else {
+                await db.update('Location',
+                    [{ column: 'BestClimbID', value: BestID }],
+                    [{ column: 'ID', value: loc.ID }]
+                );
+            }
+
+        }
+    }
+
+    res.render('locations', { locations: locs})
+    return;
+}
+
+/**/
+/*
+aysnc location()
+
+NAME
+
+        async location() - Runs to Display info on a specific location
+
+SYNOPSIS
+
+        async location(req, res);
+            req - Request object holding info on http request
+            res - response object holding info on our http response
+
+DESCRIPTION
+
+        This function will handle the add location page. Here users can
+        view all of the climbs at a particular location. In this function,
+        we fetch all of the climbs at this location, and then do a double
+        check on the most recent ascent of these climbs, and then we 
+        render our page.
+
+Note: This can probably be broken down into seperate functions
+
+RETURNS
+
+        Returns nothing
+
+*/
+/**/
+const location = async (req, res) => {
+    const currLocation = await db.read('Location', [{ column: 'ID', value: req.params.ID }]);
+    const climbs = await db.read('Climb', [{ column: 'LocationID', value: currLocation[0].ID }]);
+    console.log("# of climbs read for current location: " + climbs.length);
+
+    //To show Rec Ascent Accurately
+    for (climb of climbs) {
+
+        //Update RecAscent
+        const recAscent = await db.read('Ascent', [{ column: 'ID', value: climb.RecAscentID }]);
+        //Error Check
+        if (recAscent.length < 1) {
+            console.log("Error displaying rec Ascent Date, no Rec Ascent");
+            continue;
+        }
+        const recAscentDate = await readDate(recAscent[0].Date);
+        climb.RecAscentID = recAscentDate.year + "-" + recAscentDate.month + "-" + recAscentDate.day;
+    }
+    
+
+    res.render('location', { climbs: climbs, location: currLocation[0] });
+    return;
+}
+
+/**/
+/*
+aysnc updateLocation()
+
+NAME
+
+        async updateLocation() - Will update a location
+
+SYNOPSIS
+
+        async updateLocation(req, res);
+            req - Request object holding info on http request
+            res - response object holding info on our http response
+
+DESCRIPTION
+
+        This function will handle our update location page. Here we just
+        keep track of the notes for each location. Here people can put
+        information on things like guidebooks, directions, and parking.
+
+RETURNS
+
+        Returns nothing
+
+*/
+/**/
+const updateLocation = async (req, res) => {
+    let location = await db.read('Location', [{ column: 'ID', value: req.params.ID }]);
+    if (location.length != 1) {
+        console.log("Error Reading Current Location in UpdateLocation, Redirecting Home");
+        res.redirect('/');
+        return;
+    }
+
+    if (req.method == "POST") {
+        //We are trying to update the notes
+
+        //take note of the user
+        const notes = req.body.notes;
+
+        try {
+            await db.update('Location',
+                [{ column: 'Notes', value: notes }],
+                [{ column: 'ID', value: req.params.ID }]
+            );
+            await db.update('Location',
+                [{ column: 'LastEditor', value: req.session.user.ID }],
+                [{ column: 'ID', value: req.params.ID }]
+            );
+            const lastEditor = await db.read('User', [{ column: 'ID', value: location[0].LastEditor }]);
+            //const lastEditor = { FirstName: req.session.user.FirstName, LastName: req.session.user.LastName };
+            location = await db.read('Location', [{ column: 'ID', value: req.params.ID }]);
+            res.render('updateLocation',
+                {
+                    location: location[0],
+                    notes: location[0].Notes,
+                    lastEditor: lastEditor[0],
+                    msg: "Location notes updated successfully"
+                });
+            return;
+        }
+        catch {
+            console.log("Error in Update Location -> might render incorrectly");
+            const lastEditor = await db.read('User', [{ column: 'ID', value: location[0].LastEditor }]);
+            res.render('updateLocation',
+                {
+                    location: location[0],
+                    notes: location[0].Notes,
+                    lastEditor: lastEditor[0],
+                    msg: "Location notes update failed, reason unknown"
+                });
+            return;
+        }
+        
+    }
+
+    const lastEditor = await db.read('User', [{ column: 'ID', value: location[0].LastEditor }]);
+    res.render('updateLocation',
+        {
+            location: location[0],
+            notes: location[0].Notes,
+            lastEditor: lastEditor[0],
+            msg: "You will (hopefully) see a success message here after updating!"
+        });
+    return;
+}
+
 //Reuseable Code for Country selection
 const countries = async () => {
     const countries = [
@@ -2632,81 +2731,7 @@ const countries = async () => {
     return countries;
 }
 
-/**/
-/*
-aysnc routing()
-
-NAME
-
-        async routing() - Initializes our routes
-
-SYNOPSIS
-
-        async routing();
-            No Params
-
-DESCRIPTION
-
-        This function will initialize all of our routes. It is called
-        Immedietly on program execution.
-
-RETURNS
-
-        Returns nothing
-
-*/
-/**/
-const routing = async () => {
-    app.get('/', start);
-    app.get('/signout', signout);
-
-    app.get('/login', login);
-    app.post('/login', login);
-
-    app.get('/signup', signup);
-    app.post('/signup', signup);
-
-    app.get('/profile/:username', profile);
-    app.post('/profile/:username', profile);
-
-    app.get('/locations', locations);
-    app.post('/locations', locations);
-    app.get('/locations/:ID', location);
-    app.post('/locations/:ID', addClimb);
-    app.get('/locations/:ID/editLocation', updateLocation);
-    app.post('/locations/:ID/editLocation', updateLocation);
-    app.get('/locations/:ID/Climb/:ClimbID', climbPage);
-    app.post('/locations/:ID/Climb/:ClimbID', climbPage);
-
-    app.get('/locations/:ID/Climb/:ClimbID/LogAscent', logAscent);
-    app.post('/locations/:ID/Climb/:ClimbID/LogAscent', logAscent);
-
-    app.get('/locations/:ID/Climb/:ClimbID/LogAttempt', logAttempt);
-    app.post('/locations/:ID/Climb/:ClimbID/LogAttempt', logAttempt);
-
-    app.get('/locations/:ID/Climb/:ClimbID/EditClimb', editClimb);
-    app.post('/locations/:ID/Climb/:ClimbID/EditClimb', editClimb);
-
-    app.get('/locations/:ID/Climb/:ClimbID/Reasoning', reasoning);
-    app.post('/locations/:ID/Climb/:ClimbID/Reasoning', reasoning);
-
-    app.get('/addLocation', addLocation);
-    app.post('/addLocation', addLocation);
-
-    app.get('/climbers', climbers);
-    app.post('/climbers', climbers);
-
-    app.get('/Climbers/:ID', climberPage);
-    app.post('/Climbers/:ID', climberPage);
-
-    app.get('/Climbers/:ID/Reasoning', reasoning);
-    app.post('/Climbers/:ID/Reasoning', reasoning);
-
-    app.get('/addClimb', addClimb);
-    app.post('/addClimb', addClimb);
-    app.get('/locations/:ID/addClimb/', addClimb);
-    app.post('/locations/:ID/addClimb/', addClimb);
-}
+startup();
 routing();
 
 app.listen(8080, () => {
