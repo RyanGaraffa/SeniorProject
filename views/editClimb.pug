@@ -1,0 +1,39 @@
+extends layout
+
+block content
+
+        h1 Update Climb: #{climb.Name} - #{location.Name} 
+        if location.Notes
+            h4 Current Notes: 
+            p #{location.Notes}
+            if lastEditor
+                p Last Editor: #{lastEditor.FirstName} #{lastEditor.LastName}
+        else
+            p This location doesn't have any information on it...
+            p Add some below!
+        
+        if user
+            form(action="/locations/"+location.ID+"/Climb/"+climb.ID  method="post")
+            legend Climb Info
+                fieldset
+                    section
+                        label(for="climbName") Climb Name:  
+                        input(name="climbName" required)
+                    section
+                            label(for="location") Location:
+                            if location
+                                input(name="location" value=location.Name readonly="true")
+                                input(name="locationID" value=location.ID type="hidden")
+                            else
+                                input(name="location" required)
+                    section
+                        label(for="grade") Community Grade (V):  
+                        input(name="grade", type="number", min="0", max="17" placeholder="0-5" required)
+                    //section     
+                        label(for="notes") Notes: 
+                        textarea(name="notes" type="text")
+                    <button type="submit">Submit </button>
+            span #{msg}
+        else 
+            <a href="/login">Sign in </a>
+            span to edit this location!

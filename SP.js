@@ -114,6 +114,7 @@ const startup = async () => {
         { name: 'NumClimbs', type: 'INTEGER' },
         { name: 'BestClimbID', type: 'INTEGER' },
         { name: 'Notes', type: 'TEXT' },
+        { name: 'LastEditor', type: 'INTEGER'}
     ], 'id')    
 
     await db.schema('Attempt', [
@@ -1551,6 +1552,94 @@ const climbPage = async (req, res) => {
 
 /**/
 /*
+aysnc editClimb()
+
+NAME
+
+        async editClimb() - Will update climb info
+
+SYNOPSIS
+
+        async editClimb(req, res);
+            req - Request object holding info on http request
+            res - response object holding info on our http response
+
+DESCRIPTION
+
+        This function will handle our update location page. Here we just
+        keep track of the notes for each location. Here people can put
+        information on things like guidebooks, directions, and parking.
+
+RETURNS
+
+        Returns nothing
+
+*/
+/**/
+const editClimb = async (req, res) => {
+    let climb = await db.read('Climb', [{ column: 'ID', value: req.params.ClimbID }]);
+    let location = await db.read('Location', [{ column: 'ID', value: req.params.ID }]);
+    if (climb.length != 1) {
+        console.log("Error Reading Current Climb in EditClimb, Redirecting Home");
+        res.redirect('/');
+        return;
+    }
+    res.render('editClimb', {climb: climb[0], location: location[0]});
+    //res.redirect('/');
+    return;
+
+    if (req.method == "POST") {
+        //We are trying to update info
+
+        try {
+            await db.update('Location',
+                [{ column: 'Notes', value: notes }],
+                [{ column: 'ID', value: req.params.ID }]
+            );
+            await db.update('Location',
+                [{ column: 'LastEditor', value: req.session.user.ID }],
+                [{ column: 'ID', value: req.params.ID }]
+            );
+            const lastEditor = await db.read('User', [{ column: 'ID', value: location[0].LastEditor }]);
+            //const lastEditor = { FirstName: req.session.user.FirstName, LastName: req.session.user.LastName };
+            location = await db.read('Location', [{ column: 'ID', value: req.params.ID }]);
+            res.render('updateLocation',
+                {
+                    location: location[0],
+                    notes: location[0].Notes,
+                    lastEditor: lastEditor[0],
+                    msg: "Location notes updated successfully"
+                });
+            return;
+        }
+        catch {
+            console.log("Error in Update Location -> might render incorrectly");
+            const lastEditor = await db.read('User', [{ column: 'ID', value: location[0].LastEditor }]);
+            res.render('updateLocation',
+                {
+                    location: location[0],
+                    notes: location[0].Notes,
+                    lastEditor: lastEditor[0],
+                    msg: "Location notes update failed, reason unknown"
+                });
+            return;
+        }
+
+    }
+
+    const lastEditor = await db.read('User', [{ column: 'ID', value: location[0].LastEditor }]);
+    res.render('updateLocation',
+        {
+            location: location[0],
+            notes: location[0].Notes,
+            lastEditor: lastEditor[0],
+            msg: "You will (hopefully) see a success message here after updating!"
+        });
+    return;
+}
+
+/**/
+/*
 aysnc climbers()
 
 NAME
@@ -1623,7 +1712,7 @@ const climbers = async (req, res) => {
         }
 
     }
-    users = await db.read('User', []);
+    //users = await db.read('User', []);
     res.render('climbers', { climbers: users });
     return;
 }
@@ -2619,8 +2708,13 @@ const routing = async () => {
 
     app.get('/locations/:ID/Climb/:ClimbID/LogAscent', logAscent);
     app.post('/locations/:ID/Climb/:ClimbID/LogAscent', logAscent);
+
     app.get('/locations/:ID/Climb/:ClimbID/LogAttempt', logAttempt);
     app.post('/locations/:ID/Climb/:ClimbID/LogAttempt', logAttempt);
+
+    app.get('/locations/:ID/Climb/:ClimbID/EditClimb', editClimb);
+    app.post('/locations/:ID/Climb/:ClimbID/EditClimb', editClimb);
+
     app.get('/locations/:ID/Climb/:ClimbID/Reasoning', reasoning);
     app.post('/locations/:ID/Climb/:ClimbID/Reasoning', reasoning);
 

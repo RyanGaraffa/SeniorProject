@@ -14,11 +14,15 @@ block content
         
         if user
             form(action="/Locations/"+location.ID+"/editLocation/" method="post" onkeydown="return event.key != 'Enter';")
+                    legend Name
+                        fieldset
+                            label(for="name") Update Name:
+                            input(name="name" value=location.Name required)
                     legend Notes
                         fieldset
-                        
                             label(for="notes") Update Notes:
                             textarea(name="notes" cols="40" rows="20") #{location.Notes}
+                    
                     <button type="submit">Submit </button>
             span #{msg}
         else 
